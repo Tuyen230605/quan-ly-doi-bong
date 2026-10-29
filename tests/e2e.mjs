@@ -58,8 +58,8 @@ function watch(page, who) {
   page.on("dialog", (d) => d.accept());
 }
 
-async function newPage(who) {
-  const ctx = await browser.newContext(mobile);
+async function newPage(who, opts = {}) {
+  const ctx = await browser.newContext({ ...mobile, ...opts });
   const page = await ctx.newPage();
   watch(page, who);
   return { ctx, page };
@@ -151,6 +151,22 @@ try {
   await b.goto(`${BASE}${nextHref}`);
   await expectText(b, "Đi công tác");
   ok("Bình vote NGHỈ tuần sau; phiếu tuần này đã khoá");
+
+  step = "Máy cũ / JS chưa chạy vẫn vào đội, chọn tên, vote được";
+  const { page: old } = await newPage("nojs", { javaScriptEnabled: false });
+  await old.goto(`${T}/vote`);
+  await old.fill("input[name=password]", "bong123");
+  await button(old, "Vào đội").click();
+  await old.waitForURL(`**/doi/fc-van-phong/vote`);
+  if (old.url().includes("password")) fail("mật khẩu bị lộ lên thanh địa chỉ");
+  await old.goto(`${T}/toi`);
+  await old.selectOption("select[name=playerId]", { label: "Hải" });
+  await button(old, "Xác nhận").click();
+  await old.waitForURL("**/vote");
+  const oldNext = old.locator("section.card", { has: old.locator(`a[href='${nextHref}']`) });
+  await oldNext.getByRole("button", { name: "✅ ĐI" }).click();
+  await expectText(old, "Đã vote ĐI");
+  ok("tắt JavaScript: nhập mật khẩu → quay lại trang vote, chọn tên Hải, vote ĐI tuần sau");
 
   step = "Điểm danh + chốt tiền";
   await a.goto(`${BASE}${todayHref}`);

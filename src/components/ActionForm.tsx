@@ -6,7 +6,11 @@ import { useTeamId } from "./TeamContext";
 
 type Action = (state: ActionState, fd: FormData) => Promise<ActionState>;
 
-/** Form gọi server action, hiện lỗi/thành công ngay dưới form, không mất dữ liệu đã nhập khi lỗi. */
+/**
+ * Form gọi server action, hiện lỗi/thành công ngay dưới form, không mất dữ liệu đã nhập khi lỗi.
+ * Có `action` nên vẫn gửi được (POST thường) khi JS chưa chạy: máy cũ (dưới iOS 16.4 / Chrome 111)
+ * hoặc mạng chậm, bấm trước khi trang tải xong.
+ */
 export function ActionForm({
   action,
   children,
@@ -33,15 +37,17 @@ export function ActionForm({
   return (
     <form
       ref={ref}
+      action={formAction}
       className={className}
       onSubmit={(e) => {
+        // JS đã chạy: tự gửi để hỏi xác nhận được và React không tự xoá dữ liệu đã nhập sau khi gửi.
         e.preventDefault();
         if (confirm && !window.confirm(confirm)) return;
         const fd = new FormData(e.currentTarget, (e.nativeEvent as SubmitEvent).submitter);
-        if (teamId != null && !fd.has("teamId")) fd.set("teamId", String(teamId));
         startTransition(() => formAction(fd));
       }}
     >
+      {teamId != null && <input type="hidden" name="teamId" value={teamId} />}
       <fieldset disabled={pending} className="contents">
         {children}
       </fieldset>
