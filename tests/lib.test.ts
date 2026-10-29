@@ -3,7 +3,7 @@ import { resultOf } from "../src/lib/labels";
 import { allocatePayments, computeFees, fmtMoney, type LedgerEntry } from "../src/lib/money";
 import { transferContent } from "../src/lib/text";
 import { computeDeadline, vnParts, weekDeadline, weekdayOf } from "../src/lib/time";
-import { bankAppLink, BANKS, buildVietQR, crc16, parseVietQR } from "../src/lib/vietqr";
+import { buildVietQR, crc16, parseVietQR } from "../src/lib/vietqr";
 
 describe("tiền", () => {
   it("định dạng VND", () => {
@@ -160,29 +160,4 @@ describe("VietQR", () => {
     expect(transferContent("PHAT Nguyễn Văn Đức Anh Rất Dài Quá Trời")).toHaveLength(25);
   });
 
-  it("link mở app ngân hàng (dl.vietqr.io) điền sẵn số tiền + nội dung", () => {
-    const url = bankAppLink("mb", {
-      bin: "970436",
-      accountNo: "0123 456789",
-      amount: 200000,
-      content: "AN T11",
-      accountName: "NGUYEN VAN HUNG",
-      returnUrl: "https://bong.vn/doi/fc/nop/1",
-    })!;
-    const u = new URL(url);
-    expect(u.origin + u.pathname).toBe("https://dl.vietqr.io/pay");
-    expect(u.searchParams.get("app")).toBe("mb");
-    expect(u.searchParams.get("ba")).toBe("0123456789@vcb");
-    expect(url).toContain("&ba=0123456789@vcb");
-    expect(u.searchParams.get("am")).toBe("200000");
-    expect(u.searchParams.get("tn")).toBe("AN T11");
-    expect(u.searchParams.get("bn")).toBe("NGUYEN VAN HUNG");
-    expect(u.searchParams.get("url")).toBe("https://bong.vn/doi/fc/nop/1");
-    expect(bankAppLink("mb", { bin: "999999", accountNo: "1", amount: 1, content: "X", returnUrl: "https://x.vn" })).toBeNull();
-  });
-
-  it("mỗi ngân hàng có mã VietQR riêng", () => {
-    expect(new Set(BANKS.map((b) => b.code)).size).toBe(BANKS.length);
-    expect(BANKS.find((b) => b.bin === "970422")?.code).toBe("mb");
-  });
 });

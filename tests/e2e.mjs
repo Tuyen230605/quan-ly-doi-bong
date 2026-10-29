@@ -5,7 +5,9 @@
 import { mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import jsQR from "jsqr";
 import { chromium } from "playwright-core";
+import pngjs from "pngjs";
 import QRCode from "qrcode";
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
@@ -30,6 +32,17 @@ const expectText = async (page, text, timeout = 15000) => {
   }
 };
 const button = (page, name) => page.getByRole("button", { name, exact: true });
+/** Đọc nội dung mã QR từ ảnh trên trang (ảnh PNG dạng data URL). */
+const readQr = async (page, alt) => {
+  const img = page.locator(`img[alt="${alt}"]`).first();
+  await img.waitFor();
+  const src = await img.getAttribute("src");
+  if (!src?.startsWith("data:image/png;base64,")) fail(`ảnh QR "${alt}" không có: ${src?.slice(0, 40)}`);
+  const png = pngjs.PNG.sync.read(Buffer.from(src.split(",")[1], "base64"));
+  const code = jsQR(new Uint8ClampedArray(png.data), png.width, png.height);
+  if (!code) fail(`không đọc được mã QR "${alt}"`);
+  return code.data;
+};
 const vnDate = (addDays = 0) => new Date(Date.now() + 7 * 3600e3 + addDays * 864e5).toISOString().slice(0, 10);
 
 /** Ảnh QR ngân hàng giả lập: Vietcombank, STK 0123456789 (chuẩn VietQR). */
@@ -395,14 +408,22 @@ try {
   await button(d, "Xác nhận").click();
   await d.waitForURL(`**${payPath}`);
   await expectText(d, "Nộp cho Dũng");
-  const mbHref = await d.locator("a[data-app=mb]").getAttribute("href");
-  const mb = new URL(mbHref);
-  const want = { app: "mb", ba: "0123456789@vcb", am: "200000", tn: "DUNG T11", bn: "NGUYEN VAN HUNG" };
-  for (const [k, v] of Object.entries(want)) if (mb.searchParams.get(k) !== v) fail(`link MB: ${k}=${mb.searchParams.get(k)}, mong ${v}`);
-  if (mb.origin !== "https://dl.vietqr.io" || !mb.searchParams.get("url")?.endsWith(payPath)) fail(`link MB sai: ${mbHref}`);
+  const dungQr = await readQr(d, "Quỹ tháng 11");
+  for (const part of ["0123456789", "5406200000", "0808DUNG T11"]) if (!dungQr.includes(part)) fail(`mã QR của Dũng thiếu ${part}: ${dungQr}`);
   if (await d.getByRole("button", { name: /Copy/ }).or(d.getByRole("link", { name: /Tải ảnh/ })).count())
     fail("trang nộp tiền không được có nút copy / tải QR");
-  ok("thành viên vào link → nhập mật khẩu → chọn tên → link app ngân hàng điền sẵn 200k, nội dung DUNG T11");
+  ok("thành viên vào link → nhập mật khẩu → chọn tên → hiện ngay mã QR: STK quỹ, 200.000đ, nội dung DUNG T11");
+  // Máy cũ (không chạy JavaScript) vẫn thấy mã QR
+  await old.goto(`${BASE}${payPath}`);
+  await old.fill("input[name=password]", "moi456");
+  await button(old, "Vào đội").click();
+  await old.waitForURL(`**${payPath}`);
+  await expectText(old, "Nộp cho Hải");
+  const haiQr = await readQr(old, "Quỹ tháng 11");
+  for (const part of ["5406200000", "0807HAI T11"]) if (!haiQr.includes(part)) fail(`mã QR của Hải thiếu ${part}: ${haiQr}`);
+  await old.goto(T);
+  if (!(await readQr(old, "Quỹ bóng")).includes("0123456789")) fail("QR quỹ bóng ở trang chủ sai");
+  ok("tắt JavaScript: vẫn thấy mã QR nộp tiền (HAI T11) và QR quỹ ở trang chủ");
   await a.locator('li[data-player="Bình"]').getByRole("button", { name: "Đã nhận" }).click();
   await a.locator('li[data-player="Bình"]').getByText("✅ Đã nộp").waitFor();
   await expectText(a, "Ai đã nộp (1/6)");

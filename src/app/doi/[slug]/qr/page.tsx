@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { QrCard } from "@/components/QrCard";
+import { Qr } from "@/components/Qr";
 import { Card, Field, PageTitle } from "@/components/ui";
 import { getFunds, getPlayers, indexById } from "@/lib/data";
 import { FUND_NAMES, fmtMoney, parseMoney, type Fund } from "@/lib/money";
@@ -63,7 +63,7 @@ export default async function QrPage({ params, searchParams }: { params: Promise
 
       <Card>
         {qr.payload ? (
-          <QrCard
+          <Qr
             title={title}
             payload={qr.payload}
             lines={qr.lines}
@@ -72,7 +72,7 @@ export default async function QrPage({ params, searchParams }: { params: Promise
           />
         ) : qr.image ? (
           <>
-            <QrCard title={title} payload={null} image={qr.image} lines={[...qr.lines, ...(amount ? [`Số tiền: ${fmtMoney(amount)}`] : [])]} copies={qr.copies} fileName={`qr-${f}`} />
+            <Qr title={title} payload={null} image={qr.image} lines={[...qr.lines, ...(amount ? [`Số tiền: ${fmtMoney(amount)}`] : [])]} copies={qr.copies} fileName={`qr-${f}`} />
             <p className="mt-2 text-center text-xs text-gray-500">
               Web chưa đọc được số tài khoản từ ảnh QR này nên không điền sẵn số tiền được. Admin có thể nhập ngân hàng + số tài khoản trong Cài đặt.
             </p>

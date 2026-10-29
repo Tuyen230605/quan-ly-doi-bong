@@ -5,9 +5,13 @@ import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { CopyButton } from "./CopyButton";
 
-/** Vẽ mã VietQR kèm chú thích thành 1 ảnh để tải về / gửi Zalo. */
+/**
+ * Vẽ mã VietQR kèm chú thích thành 1 ảnh để tải về / gửi Zalo.
+ * initialSrc: ảnh QR tạo sẵn trên server (xem Qr.tsx), hiện ngay cả khi máy không chạy được JavaScript.
+ */
 export function QrCard({
   payload,
+  initialSrc,
   image,
   title,
   lines,
@@ -15,8 +19,10 @@ export function QrCard({
   copies = [],
   size = "md",
   actions = true,
+  caption = true,
 }: {
   payload: string | null;
+  initialSrc?: string | null;
   image?: string | null;
   title: string;
   lines: string[];
@@ -24,8 +30,11 @@ export function QrCard({
   copies?: { label: string; value: string }[];
   size?: "sm" | "md";
   actions?: boolean; // false: chỉ hiện ảnh QR, không có nút tải ảnh / copy
+  caption?: boolean; // false: trang đã tự ghi số tiền, nội dung bên ngoài, không ghi lại dưới ảnh
 }) {
-  const [src, setSrc] = useState<string | null>(payload ? null : (image ?? null));
+  const [src, setSrc] = useState<string | null>(payload ? (initialSrc ?? null) : (image ?? null));
+  // Ảnh vẽ bằng canvas đã có chú thích; ảnh từ server thì chưa, nên hiện chú thích bên dưới.
+  const captioned = !!payload && !!src && src !== initialSrc;
   const linesKey = lines.join("\n");
 
   useEffect(() => {
@@ -67,7 +76,7 @@ export function QrCard({
       ) : (
         <div className={size === "sm" ? "h-60 w-52 animate-pulse rounded-lg bg-gray-100" : "h-80 w-72 animate-pulse rounded-lg bg-gray-100"} />
       )}
-      {!payload && lines.length > 0 && (
+      {caption && !captioned && lines.length > 0 && (
         <div className="text-center text-sm text-gray-700">
           {lines.map((l) => (
             <div key={l}>{l}</div>

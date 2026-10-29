@@ -232,7 +232,7 @@ export const transactions = pgTable(
   ],
 );
 
-/** Link nộp tiền admin tạo (VD quỹ tháng 11, 200k). Thành viên mở link, chọn app ngân hàng để chuyển. */
+/** Link nộp tiền admin tạo (VD quỹ tháng 11, 200k). Thành viên mở link, chọn tên là hiện mã QR có sẵn số tiền + nội dung. */
 export const paymentRequests = pgTable(
   "payment_requests",
   {
