@@ -7,7 +7,7 @@ const ITEMS = [
   { path: "", label: "Trang chủ", icon: "🏠", match: (p: string) => p === "" },
   { path: "/vote", label: "Vote", icon: "🗳️", match: (p: string) => p.startsWith("/vote") || p.startsWith("/toi") },
   { path: "/lich", label: "Lịch", icon: "📅", match: (p: string) => p.startsWith("/lich") || p.startsWith("/tran") },
-  { path: "/quy", label: "Quỹ", icon: "💰", match: (p: string) => p.startsWith("/quy") || p.startsWith("/cong-no") },
+  { path: "/quy", label: "Quỹ", icon: "💰", match: (p: string) => p.startsWith("/quy") || p.startsWith("/cong-no") || p.startsWith("/nop") },
   { path: "/them", label: "Thêm", icon: "☰", match: () => false },
 ];
 

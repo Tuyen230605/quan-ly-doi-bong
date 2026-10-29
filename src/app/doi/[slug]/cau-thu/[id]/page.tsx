@@ -6,7 +6,7 @@ import { ActionForm } from "@/components/ActionForm";
 import { PlayerFields } from "@/components/forms";
 import { Badge, Card, Empty, Fold, Money, PageTitle, ResultBadge, Stat } from "@/components/ui";
 import { getDb, schema } from "@/db";
-import { getActiveTx, getPlayers, indexById, playerBalances } from "@/lib/data";
+import { getActiveTx, getPlayers, indexById, personal, playerBalances } from "@/lib/data";
 import { POSITIONS, type Result } from "@/lib/labels";
 import { FUND_NAMES, fmtMoney, TX_TYPES, type Fund } from "@/lib/money";
 import { getSettledAttendance, playerStats } from "@/lib/summary";
@@ -42,6 +42,9 @@ export default async function PlayerPage({ params }: { params: Promise<{ slug: s
     .sort((x, y) => (x.m.date < y.m.date ? 1 : -1));
   const members = players.filter((x) => x.type === "member" && x.status !== "left");
 
+  // Phạt đã trừ quỹ cá nhân: chỉ hiện 1 dòng "Phạt" thay vì thêm 2 dòng chuyển tiền giữa 2 quỹ.
+  const deducted = new Set(allTx.filter((t) => t.type === "fine_pay" && t.status === "active").map((t) => t.refId));
+  const history = allTx.filter((t) => t.type !== "fine_pay");
   const debtLink = (fund: Fund, amount: number) => `${base}/qr?fund=${fund}&player=${id}&amount=${amount}`;
 
   return (
@@ -59,8 +62,13 @@ export default async function PlayerPage({ params }: { params: Promise<{ slug: s
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Stat label="Số dư quỹ bóng" value={<Money v={b.ball} color />} sub={b.ball < 0 ? "đang nợ" : b.ball > 0 ? "đã nộp trước" : ""} />
-        <Stat label="Quỹ phạt" value={<Money v={b.penalty} color />} sub={b.penalty < 0 ? "đang nợ phạt" : ""} />
+        <Stat
+          label="Quỹ cá nhân"
+          value={<Money v={personal(b)} color />}
+          sub={
+            (personal(b) < 0 ? "đang nợ, cần nộp thêm" : "còn trong quỹ") + (b.penalty < 0 ? ` · gồm nợ phạt cũ ${fmtMoney(-b.penalty)}` : "")
+          }
+        />
         <Stat label="Số trận đã đá" value={all?.attended ?? 0} />
         <Stat
           label="Chuyên cần"
@@ -149,13 +157,15 @@ export default async function PlayerPage({ params }: { params: Promise<{ slug: s
       </Card>
 
       <Card title="Lịch sử tiền">
-        {allTx.length === 0 && <Empty>Chưa có giao dịch.</Empty>}
+        {history.length === 0 && <Empty>Chưa có giao dịch.</Empty>}
         <ul className="divide-y divide-gray-100">
-          {allTx.map((t) => (
+          {history.map((t) => (
             <li key={t.id} className={`flex justify-between gap-2 py-1.5 text-sm ${t.status !== "active" ? "text-gray-400 line-through" : ""}`}>
               <div className="min-w-0">
                 <div>
-                  {TX_TYPES[t.type]} · <span className="text-gray-500">{FUND_NAMES[t.fund as Fund]}</span>
+                  {TX_TYPES[t.type]}
+                  {t.category && t.type === "penalty" ? `: ${t.category}` : ""} ·{" "}
+                  <span className="text-gray-500">{deducted.has(t.id) ? "trừ quỹ cá nhân" : FUND_NAMES[t.fund as Fund]}</span>
                 </div>
                 <div className="truncate text-xs text-gray-500">
                   {fmtDate(t.date)}

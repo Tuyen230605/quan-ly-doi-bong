@@ -15,6 +15,13 @@
       "when": 1793233272651,
       "tag": "0001_vote_note",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793274358692,
+      "tag": "0002_personal_fund",
+      "breakpoints": true
     }
   ]
 }

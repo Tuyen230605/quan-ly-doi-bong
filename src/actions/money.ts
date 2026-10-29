@@ -170,9 +170,13 @@ export async function adjust(_: ActionState, fd: FormData) {
   });
 }
 
-export type PenaltyItem = { playerId: number; typeId: number; amount: number; note?: string };
+export type PenaltyItem = { playerId: number; typeId: number; amount: number; note?: string; reason?: string };
 
-/** Ghi danh sách phạt (của 1 buổi hoặc phạt lẻ). Tiền phạt chỉ vào quỹ phạt. */
+/**
+ * Ghi danh sách phạt (của 1 buổi hoặc phạt lẻ) và trừ luôn vào quỹ cá nhân của người bị phạt.
+ * Mỗi khoản phạt gồm: khoản nợ phạt (quỹ phạt) + cặp "trừ quỹ cá nhân": quỹ bóng chuyển sang quỹ phạt,
+ * số dư quỹ bóng của người đó giảm. Quỹ cá nhân không đủ thì thành âm (đang nợ).
+ */
 export async function addPenalties(
   teamId: number,
   matchId: number | null,
@@ -206,29 +210,45 @@ export async function addPenalties(
           .where(and(eq(attendances.matchId, matchId), eq(attendances.playerId, n.playerId)));
     if (!valid.length) return `Đã lưu ${notes.length} ghi chú`;
     const types = new Map((await db.select().from(penaltyTypes).where(eq(penaltyTypes.teamId, team.id))).map((t) => [t.id, t]));
-    await db.insert(transactions).values(
-      valid.map((i) => {
-        const typeName = types.get(i.typeId)?.name ?? "Phạt";
-        return {
-          teamId: team.id,
-          fund: "penalty",
-          type: "penalty",
-          playerAmount: -Math.round(i.amount),
-          playerId: i.playerId,
-          matchId,
-          penaltyTypeId: types.has(i.typeId) ? i.typeId : null,
-          category: typeName,
-          note: i.note?.trim() || `${typeName} ${label}`,
-          date,
-          createdBy: user.id,
-        };
-      }),
-    );
+    await db.transaction(async (tx) => {
+      const fines = await tx
+        .insert(transactions)
+        .values(
+          valid.map((i) => {
+            const typeName = types.get(i.typeId)?.name ?? (i.reason?.trim().slice(0, 60) || "Phạt");
+            return {
+              teamId: team.id,
+              fund: "penalty",
+              type: "penalty",
+              playerAmount: -Math.round(i.amount),
+              playerId: i.playerId,
+              matchId,
+              penaltyTypeId: types.has(i.typeId) ? i.typeId : null,
+              category: typeName,
+              note: i.note?.trim() || `${typeName} ${label}`,
+              date,
+              createdBy: user.id,
+            };
+          }),
+        )
+        .returning();
+      await tx.insert(transactions).values(
+        fines.flatMap((f) => {
+          const amount = -f.playerAmount;
+          const base = { teamId: team.id, type: "fine_pay", playerId: f.playerId, refId: f.id, date, createdBy: user.id };
+          const note = `${f.category} ${label}`;
+          return [
+            { ...base, fund: "ball", cashAmount: -amount, playerAmount: -amount, category: "Nộp phạt (trừ quỹ cá nhân)", note },
+            { ...base, fund: "penalty", cashAmount: amount, playerAmount: amount, category: "Trừ từ quỹ cá nhân", note },
+          ];
+        }),
+      );
+    });
     const total = valid.reduce((s, i) => s + i.amount, 0);
     await audit(team.id, { admin: user }, "Phạt", `${label}: ${valid.length} khoản, tổng ${fmtMoney(total)}`);
     if (skipped.length)
       await audit(team.id, { admin: user }, "Không phạt", `${label}: ${skipped.map((s) => `${s.name}${s.note ? ` (${s.note})` : ""}`).join(", ")}`);
-    return `Đã phạt ${valid.length} khoản, cộng ${fmtMoney(total)} vào quỹ phạt`;
+    return `Đã phạt ${valid.length} khoản, trừ quỹ cá nhân, cộng ${fmtMoney(total)} vào quỹ phạt`;
   });
 }
 
@@ -275,7 +295,23 @@ export async function cancelTx(_: ActionState, fd: FormData) {
       .where(and(eq(transactions.id, id), eq(transactions.teamId, team.id)));
     if (!t || t.status !== "active") fail("Giao dịch không tồn tại hoặc đã huỷ.");
     if (MATCH_LOCKED.includes(t.type)) fail("Khoản này sinh ra khi chốt trận. Hãy mở lại trận để sửa.");
+    if (t.type === "fine_pay") fail("Khoản này tự trừ khi phạt. Huỷ khoản phạt thì khoản này tự huỷ theo.");
     const ids = t.type.startsWith("transfer") && t.refId ? [t.id, t.refId] : [t.id];
+    if (t.type === "penalty") {
+      // Huỷ phạt → trả lại quỹ cá nhân (huỷ cặp "trừ quỹ cá nhân" đi kèm).
+      const linked = await db
+        .select({ id: transactions.id })
+        .from(transactions)
+        .where(
+          and(
+            eq(transactions.teamId, team.id),
+            eq(transactions.refId, t.id),
+            eq(transactions.type, "fine_pay"),
+            eq(transactions.status, "active"),
+          ),
+        );
+      ids.push(...linked.map((l) => l.id));
+    }
     await db
       .update(transactions)
       .set({ status: "cancelled", cancelReason: reason })

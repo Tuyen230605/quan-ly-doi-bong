@@ -36,6 +36,7 @@ export const teams = pgTable("teams", {
   fixedFee: integer("fixed_fee").notNull().default(50000),
   guestFee: integer("guest_fee").notNull().default(70000),
   requirePin: boolean("require_pin").notNull().default(false),
+  rules: text("rules"), // quy định của đội, admin tự viết, hiện cuối trang chủ
   createdBy: integer("created_by"),
   createdAt: createdAt(),
 });
@@ -213,6 +214,7 @@ export const transactions = pgTable(
     playerId: integer("player_id"),
     matchId: integer("match_id"),
     refId: integer("ref_id"),
+    requestId: integer("request_id"), // khoản nộp ghi từ link nộp tiền
     penaltyTypeId: integer("penalty_type_id"),
     method: text("method"), // cash | transfer
     category: text("category"),
@@ -228,6 +230,23 @@ export const transactions = pgTable(
     index("tx_player").on(t.playerId),
     index("tx_match").on(t.matchId),
   ],
+);
+
+/** Link nộp tiền admin tạo (VD quỹ tháng 11, 200k). Thành viên mở link, chọn app ngân hàng để chuyển. */
+export const paymentRequests = pgTable(
+  "payment_requests",
+  {
+    id: serial("id").primaryKey(),
+    teamId: integer("team_id").notNull(),
+    fund: text("fund").notNull().default("ball"),
+    title: text("title").notNull(),
+    amount: integer("amount").notNull(),
+    note: text("note"), // thêm vào sau tên trong nội dung chuyển khoản, VD "T11"
+    status: text("status").notNull().default("open"), // open | closed
+    createdBy: integer("created_by"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("payment_requests_team").on(t.teamId)],
 );
 
 export const penaltyTypes = pgTable(

@@ -322,7 +322,7 @@ export async function settleMatch(input: SettleInput): Promise<ActionState> {
       "Chốt tiền trận",
       `${dm}: ${present.length} người, chi phí ${fmtMoney(total)}, ${fmtMoney(calc.memberFee)}/người`,
     );
-    return `Đã chốt: ${present.length} người, ${fmtMoney(calc.memberFee)}/người`;
+    return `Đã chốt: ${present.length} người, ${fmtMoney(calc.memberFee)}/người, đã trừ vào quỹ cá nhân`;
   });
 }
 

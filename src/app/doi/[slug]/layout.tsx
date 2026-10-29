@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { joinTeam } from "@/actions/auth";
 import { ActionForm } from "@/components/ActionForm";
 import { BottomNav } from "@/components/BottomNav";
+import { CurrentPath } from "@/components/CurrentPath";
 import { TeamProvider } from "@/components/TeamContext";
 import { Field } from "@/components/ui";
 import { teamCtx } from "@/lib/team";
@@ -31,6 +32,7 @@ export default async function TeamLayout({
         </div>
         <ActionForm action={joinTeam} className="card space-y-3" showOk={false}>
           <input type="hidden" name="team" value={team.slug} />
+          <CurrentPath />
           <Field label="Mật khẩu đội" hint="Hỏi đội trưởng / thủ quỹ trong nhóm Zalo">
             <input className="input" name="password" type="password" autoComplete="current-password" required autoFocus />
           </Field>

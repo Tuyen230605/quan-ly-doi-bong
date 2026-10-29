@@ -90,6 +90,7 @@ export function playerStats(
       if (t.fund === "ball") s.paidBall += t.playerAmount;
       else s.paidPenalty += t.playerAmount;
     }
+    if (t.type === "fine_pay" && t.fund === "penalty") s.paidPenalty += t.playerAmount;
   }
   for (const s of out.values()) s.rate = s.scheduled ? s.attendedScheduled / s.scheduled : null;
   return out;
@@ -110,7 +111,7 @@ function txLabel(t: Tx) {
   if (t.type === "deposit") return "Thành viên nộp";
   if (t.type === "income") return `Thu khác: ${t.category ?? ""}`;
   if (t.type === "match_cost" || t.type === "expense") return t.category ?? TX_TYPES[t.type];
-  if (t.type.startsWith("transfer")) return t.category ?? TX_TYPES[t.type];
+  if (t.type.startsWith("transfer") || t.type === "fine_pay") return t.category ?? TX_TYPES[t.type];
   return TX_TYPES[t.type] ?? t.type;
 }
 
@@ -128,7 +129,10 @@ export function fundSummary(txs: Tx[], fund: Fund, from: string, to: string) {
   const income = group(period.filter((t) => t.cashAmount > 0), (t) => t.cashAmount);
   const expense = group(period.filter((t) => t.cashAmount < 0), (t) => -t.cashAmount);
   const fined = period.filter((t) => t.type === "penalty").reduce((s, t) => s - t.playerAmount, 0);
-  const deposits = period.filter((t) => t.type === "deposit").reduce((s, t) => s + t.cashAmount, 0);
+  // Đã thu: thành viên nộp + phạt trừ thẳng vào quỹ cá nhân.
+  const deposits = period
+    .filter((t) => t.type === "deposit" || (t.type === "fine_pay" && t.cashAmount > 0))
+    .reduce((s, t) => s + t.cashAmount, 0);
   let debtEnd = 0;
   for (const b of balancesAt(f, to).values()) debtEnd += Math.min(0, b[fund]);
   return {

@@ -1,6 +1,6 @@
 # Web Quản Lý Đội Bóng — Yêu cầu tính năng
 
-> Bản 0.5 · 29/10/2026 · Đã có code, cách chạy và deploy xem [README.md](README.md)
+> Bản 0.6 · 29/10/2026 · Đã có code, cách chạy và deploy xem [README.md](README.md)
 
 ## 1. Mục tiêu
 
@@ -35,6 +35,27 @@ Quy mô: **một web cho nhiều đội**. Mỗi đội khoảng 15–40 cầu t
 | Vào link xem được thông số từng thành viên: số dư, số nợ, số trận… | [F1](#f1-quản-lý-cầu-thủ-nhập-tay), [F11.3](#f11-lịch-sử) |
 | Có lịch sử | [F11](#f11-lịch-sử) |
 | Tổng kết tháng: ai đi bao nhiêu, nghỉ thế nào, đóng tiền thế nào, bị phạt bao nhiêu | [F13](#f13-tổng-kết--phân-tích) |
+| Trang chủ có ô quỹ cá nhân, chọn tên là biết mình còn bao nhiêu; bỏ “Đang nợ nhiều nhất” | [Bản 0.6](#thay-đổi-bản-06) |
+| Bảng từng thành viên thành tab riêng, số dư hiện tại + số buổi đi lên trước | [Bản 0.6](#thay-đổi-bản-06) |
+| Chốt trận = trừ tiền mỗi người tham gia; ai phạt thì trừ riêng | [Bản 0.6](#thay-đổi-bản-06) |
+| Link nộp tiền: bấm là vào app ngân hàng, điền sẵn số tiền, nội dung là tên người nộp | [Bản 0.6](#thay-đổi-bản-06) |
+| Admin tự viết quy định đội ở cuối trang chủ | [Bản 0.6](#thay-đổi-bản-06) |
+| Cuối trận tích nhanh người bị phạt (đi muộn, vote không đi…), admin tự ghi giá, có ghi chú | [Bản 0.6](#thay-đổi-bản-06) |
+
+### Thay đổi bản 0.6
+
+1. **Quỹ cá nhân** = tiền một người còn trong quỹ đội = đã nộp − tiền trận − tiền phạt (gộp số dư quỹ bóng và nợ phạt cũ nếu có). Âm là đang nợ.
+   - Trang chủ: 3 ô *Quỹ bóng · Quỹ phạt · Quỹ cá nhân*. Chưa chọn tên thì ô quỹ cá nhân dẫn tới trang chọn tên. Bỏ mục “Đang nợ nhiều nhất” (vẫn xem ở Công nợ).
+   - Trang cầu thủ, danh sách cầu thủ, bảng thành viên, CSV đều hiện quỹ cá nhân.
+2. **Tab “Từng thành viên”** trong Tổng kết (cũng có ở menu Thêm → Bảng thành viên). Cột theo thứ tự: Tên · Quỹ cá nhân (hiện tại) · Đi/buổi · Chuyên cần · Nghỉ · Vote đi không đến · Không vote mà đi · Bị phạt · Tiền trận · Đã đóng. Mặc định xếp theo quỹ cá nhân (ai nợ nhiều lên đầu). Cột tên đứng yên khi kéo ngang trên điện thoại.
+3. **Chốt trận = trừ quỹ cá nhân**: tiền trận của mỗi người trừ vào quỹ cá nhân (khách có người dẫn thì trừ của người dẫn). Danh sách sau trận hiện “quỹ còn …” của từng người. Ai quỹ đủ thì tự tính là đã trả; quỹ âm thì vẫn bấm “Đã trả” khi người đó nộp bù.
+   **Phạt trừ riêng**: mỗi khoản phạt trừ thẳng vào quỹ cá nhân và tiền chuyển từ quỹ bóng sang quỹ phạt ngay (giao dịch `fine_pay`). Quỹ phạt tăng ngay, người bị phạt không còn khoản “nợ phạt” riêng. Huỷ khoản phạt thì quỹ cá nhân được trả lại.
+4. **Link nộp tiền** (Thao tác nhanh → *Tạo link / QR nộp tiền*): admin nhập nộp gì, số tiền, vào quỹ nào, chữ thêm vào nội dung (VD `T11`). Web tạo link gửi Zalo.
+   - Thành viên mở link → (nhập mật khẩu đội nếu máy chưa vào) → **phải chọn tên trước** → thấy danh sách app ngân hàng. Bấm app của mình là mở app ngân hàng với tài khoản nhận, số tiền và nội dung `<TÊN> <chữ thêm>` điền sẵn. Không có nút tải QR hay copy số TK / nội dung; mã QR chỉ để dự phòng (thu gọn).
+   - Link dùng dịch vụ miễn phí của VietQR: `https://dl.vietqr.io/pay?app=<app>&ba=<STK>@<mã NH>&am=<số tiền>&tn=<nội dung>&bn=<tên TK>&url=<trang quay lại>`. App **MB Bank, VietinBank, BIDV, ACB, OCB** điền sẵn; các app khác (Vietcombank, Techcombank…) hiện chỉ mở app lên, người chuyển nhập theo thông tin trên trang.
+   - Admin thấy danh sách ai đã nộp, bấm **Đã nhận** khi tiền về → ghi khoản nộp, cộng vào quỹ cá nhân. Đóng link khi thu xong.
+5. **Quy định của đội** ở cuối trang chủ: admin tự viết (lần đầu có mẫu lấy từ các mức phạt đang dùng), mọi thành viên xem được.
+6. **Phạt cuối trận – tích nhanh**: trong mục Phạt của buổi đã chốt, chọn lỗi (hoặc *Lỗi khác* tự ghi tên lỗi), admin tự ghi mức phạt, tích nhiều người (người có đá buổi đó lên đầu), thêm ghi chú → vào danh sách phạt, sửa được từng dòng trước khi xác nhận. Khoản phạt hiện ngay dưới tên người đó trong danh sách “Ai đá & tiền trận”.
 
 ---
 
@@ -66,6 +87,7 @@ Quy mô: **một web cho nhiều đội**. Mỗi đội khoảng 15–40 cầu t
 - **Lịch lẻ**: buổi đá tạo riêng (giao hữu, đá bù). Cũng có vote + hạn chót, mặc định *không vote = không đi*.
 - **Phiếu vote tuần**: mỗi tuần của lịch cố định có 1 phiếu để thành viên báo đi hay nghỉ. Phiếu tự khoá vào hạn chót mà người tạo lịch chọn (VD 23:59 chủ nhật).
 - **Vắng không báo**: vote đi (hoặc không vote nghỉ) nhưng không đến. Admin có thể đưa vào danh sách phạt.
+- **Quỹ cá nhân**: tiền của một người còn trong quỹ đội (đã nộp − tiền trận − tiền phạt). Âm = đang nợ.
 - **Quỹ bóng** và **Quỹ phạt**: 2 quỹ tách biệt hoàn toàn. Mỗi quỹ có số dư, sổ thu chi và mã QR riêng.
 - **Giao dịch**: mọi lần tiền ra hoặc vào. **Mọi con số (số dư, công nợ, tổng kết) đều tính từ danh sách giao dịch**, không có số nào nhập tay.
 
@@ -405,7 +427,7 @@ Sắp diễn ra ──(chốt tiền)──► Đã chốt
 
 ### F9. Trừ tiền chuyên cần (phạt)
 
-**Mục đích:** phạt những người vote đi (hoặc không vote nghỉ) mà không đến, và các lỗi khác. Tiền phạt cộng vào **quỹ phạt**.
+**Mục đích:** phạt những người vote đi (hoặc không vote nghỉ) mà không đến, và các lỗi khác. Tiền phạt **trừ vào quỹ cá nhân** của người bị phạt và cộng vào **quỹ phạt**.
 
 **Quy tắc đã chốt:** người vắng không báo phải trả **bằng tiền trận của các thành viên khác** trong buổi đó, số tiền này vào quỹ phạt (không vào quỹ bóng).
 
@@ -414,9 +436,9 @@ Sắp diễn ra ──(chốt tiền)──► Đã chốt
 2. Web gợi ý sẵn (theo bảng ở F6.2):
    - **Vote đi mà không đến**: tích sẵn, mức phạt = tiền trận mỗi người.
    - **Không vote mà đi**: *không* tích sẵn. Admin tuỳ tích để phạt (mức mặc định của lỗi “Không vote mà đi”, VD 20.000đ), hoặc chỉ ghi chú (ghi chú hiện dưới tên người đó trong buổi).
-3. Admin **thêm tay** bất kỳ ai, với bất kỳ lỗi nào (đi muộn, quên áo...).
+3. Admin **thêm tay** bất kỳ ai, với bất kỳ lỗi nào (đi muộn, quên áo...), hoặc **tích nhanh** nhiều người cùng một lỗi, tự ghi mức phạt và ghi chú.
 4. Mức phạt được điền sẵn theo Cài đặt, sửa được cho từng người. Người được gợi ý mà admin không phạt thì nên ghi lý do (ốm, việc gấp...).
-5. Bấm **Xác nhận** → mỗi người có 1 giao dịch phạt trong quỹ phạt. Tổng tiền phạt của quỹ tăng lên, người bị phạt có khoản nợ phạt cho đến khi nộp.
+5. Bấm **Xác nhận** → mỗi người có 1 giao dịch phạt, trừ ngay vào quỹ cá nhân, tiền chuyển từ quỹ bóng sang quỹ phạt. Quỹ cá nhân không đủ thì thành âm (đang nợ).
 
 **Phạt ngoài buổi đá:** admin phạt bất kỳ lúc nào từ trang quỹ phạt hoặc trang cầu thủ: chọn người, lỗi, số tiền, ghi chú.
 
@@ -432,13 +454,13 @@ Sắp diễn ra ──(chốt tiền)──► Đã chốt
 **Quy tắc:**
 - Web chỉ **gợi ý**, không tự phạt ai. Admin luôn là người quyết định.
 - Gợi ý không bao gồm: khách, người ngoài danh sách vote, buổi đã huỷ, buổi tắt vote. Admin vẫn thêm tay những người này được nếu muốn.
-- Tiền phạt **chỉ** ghi vào quỹ phạt, không trừ vào số dư quỹ bóng.
-- Đã phạt rồi muốn huỷ → giao dịch phạt chuyển "Đã huỷ" kèm lý do, không bị xoá.
+- Tiền phạt vào quỹ phạt, trừ vào quỹ cá nhân (từ bản 0.6; khoản phạt cũ trước đó vẫn là nợ phạt riêng cho đến khi nộp).
+- Đã phạt rồi muốn huỷ → giao dịch phạt chuyển "Đã huỷ" kèm lý do, không bị xoá; khoản trừ quỹ cá nhân đi kèm cũng huỷ theo.
 - Trạng thái đã nộp / chưa nộp phạt tính giống F8. Thành viên nộp phạt bằng QR có nội dung `PHAT <tên gọi>` (F3).
 
 **Hoàn thành khi:**
-- [x] Buổi chia 110k/người, có 1 người vote đi mà không đến → tab Phạt gợi ý đúng người đó với mức 110k. Xác nhận → quỹ phạt ghi nhận 110k tiền phạt, người đó nợ phạt 110k.
-- [ ] Thêm tay 1 người đi muộn 10k → quỹ phạt ghi nhận thêm 10k.
+- [x] Buổi chia 110k/người, có 1 người vote đi mà không đến → tab Phạt gợi ý đúng người đó với mức 110k. Xác nhận → quỹ phạt tăng 110k, quỹ cá nhân người đó giảm 110k.
+- [x] Tích nhanh 1 người đi muộn 15k → quỹ cá nhân người đó giảm 15k; huỷ khoản phạt → trả lại 15k.
 
 ---
 

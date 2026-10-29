@@ -1,27 +1,33 @@
 import Link from "next/link";
 import { CopyButton } from "@/components/CopyButton";
-import { Card, Empty, PageTitle, Stat } from "@/components/ui";
+import { Card, Empty, Money, PageTitle, Stat, Tabs } from "@/components/ui";
 import type { Player } from "@/lib/auth";
-import { getActiveTx, getPlayers, matchTotalCost } from "@/lib/data";
+import { getActiveTx, getPlayers, matchTotalCost, personal, playerBalances } from "@/lib/data";
 import { fmtK, fmtMoney } from "@/lib/money";
 import { balancesAt, emptyStats, fundSummary, getSettledAttendance, inRange, playerStats, type PlayerStats } from "@/lib/summary";
 import { viewCtx } from "@/lib/team";
 import { pname } from "@/lib/text";
 import { addMonths, fmtMonth, monthRange, todayVN } from "@/lib/time";
 
-type Row = { p: Player; s: PlayerStats; ball: number; penalty: number };
+// ball/penalty: số dư cuối kỳ (cho xếp hạng); now: quỹ cá nhân hiện tại.
+type Row = { p: Player; s: PlayerStats; ball: number; penalty: number; now: number };
 
 const SORTS = {
+  fund: "Quỹ cá nhân",
+  attended: "Đi nhiều",
   rate: "Chuyên cần",
   noshow: "Vắng không báo",
-  paid: "Đã đóng",
   fined: "Bị phạt",
-  debt: "Đang nợ",
+  paid: "Đã đóng",
   name: "Tên",
 } as const;
 
-function sortRows(rows: Row[], key: keyof typeof SORTS) {
-  const by: Record<keyof typeof SORTS, (a: Row, b: Row) => number> = {
+type SortKey = keyof typeof SORTS | "debt";
+
+function sortRows(rows: Row[], key: SortKey) {
+  const by: Record<SortKey, (a: Row, b: Row) => number> = {
+    fund: (a, b) => a.now - b.now,
+    attended: (a, b) => b.s.attended - a.s.attended || (b.s.rate ?? -1) - (a.s.rate ?? -1),
     rate: (a, b) => (b.s.rate ?? -1) - (a.s.rate ?? -1) || a.s.noshow - b.s.noshow || b.s.attended - a.s.attended,
     noshow: (a, b) => b.s.noshow - a.s.noshow,
     paid: (a, b) => b.s.paidBall - a.s.paidBall,
@@ -37,7 +43,7 @@ export default async function SummaryPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ m?: string; y?: string; sort?: string }>;
+  searchParams: Promise<{ m?: string; y?: string; sort?: string; tab?: string }>;
 }) {
   const ctx = await viewCtx(params);
   if (!ctx) return null;
@@ -47,7 +53,8 @@ export default async function SummaryPage({
   const year = /^\d{4}$/.test(sp.y ?? "") ? sp.y : undefined;
   const { from, to } = year ? { from: `${year}-01-01`, to: `${year}-12-31` } : monthRange(ym);
   const label = year ? `năm ${year}` : `tháng ${fmtMonth(ym)}`;
-  const sort = (sp.sort && sp.sort in SORTS ? sp.sort : "rate") as keyof typeof SORTS;
+  const sort = (sp.sort && sp.sort in SORTS ? sp.sort : "fund") as keyof typeof SORTS;
+  const tab = sp.tab === "tv" ? "tv" : "chung";
   const q = year ? `y=${year}` : `m=${ym}`;
 
   const [players, txs, { atts, matches }] = await Promise.all([
@@ -57,10 +64,16 @@ export default async function SummaryPage({
   ]);
   const stats = playerStats(atts, matches, txs, from, to);
   const bal = balancesAt(txs, to);
+  const balNow = playerBalances(txs);
   const rows: Row[] = players
     .filter((p) => stats.has(p.id) || (p.type === "member" && p.status === "active"))
-    .map((p) => ({ p, s: stats.get(p.id) ?? emptyStats(), ball: bal.get(p.id)?.ball ?? 0, penalty: bal.get(p.id)?.penalty ?? 0 }));
-  const sorted = sortRows(rows, sort);
+    .map((p) => ({
+      p,
+      s: stats.get(p.id) ?? emptyStats(),
+      ball: bal.get(p.id)?.ball ?? 0,
+      penalty: bal.get(p.id)?.penalty ?? 0,
+      now: personal(balNow.get(p.id)),
+    }));
 
   const top = (list: Row[], fmt: (r: Row) => string, n = 3) => list.slice(0, n).map(fmt).join(", ") || "—";
   const members = rows.filter((r) => r.p.type === "member");
@@ -97,8 +110,9 @@ export default async function SummaryPage({
     `⚖️ Quỹ phạt: phát sinh ${fmtMoney(pen.fined)}, đã thu ${fmtMoney(pen.deposits)}, còn nợ ${fmtMoney(pen.debtEnd)}, đang có ${fmtMoney(pen.closing)}`,
   ].join("\n");
 
+  const t = tab === "tv" ? "&tab=tv" : "";
   const nav = (target: string, text: string) => (
-    <Link href={target} className="btn btn-sm">
+    <Link href={`${target}${t}`} className="btn btn-sm">
       {text}
     </Link>
   );
@@ -115,152 +129,180 @@ export default async function SummaryPage({
           ⬇ Excel (CSV)
         </a>
       </div>
+      <Tabs
+        items={[
+          { href: `${base}/tong-ket?${q}`, label: "📊 Tổng quan", active: tab === "chung" },
+          { href: `${base}/tong-ket?${q}&tab=tv`, label: `👥 Từng thành viên (${rows.length})`, active: tab === "tv" },
+        ]}
+      />
 
-      <Card title="Xếp hạng">
-        <dl className="space-y-1.5 text-sm">
-          {(
-            [
-              ["🏅 Chuyên cần nhất", ranks.rate],
-              ["😴 Nghỉ nhiều nhất", ranks.rested],
-              ["🚨 Vote đi mà không đến", ranks.noshow],
-              ["💸 Bị phạt nhiều nhất", ranks.fined],
-              ["💰 Đóng quỹ nhiều nhất", ranks.paid],
-              ["📌 Đang nợ nhiều nhất", ranks.debt],
-            ] as const
-          ).map(([k, v]) => (
-            <div key={k} className="grid grid-cols-[10rem_1fr] gap-2">
-              <dt className="text-gray-500">{k}</dt>
-              <dd>{v}</dd>
-            </div>
-          ))}
-        </dl>
-      </Card>
-
-      <Card title={`Từng thành viên (${rows.length})`}>
-        <div className="mb-2 flex flex-wrap gap-1 text-xs">
-          Sắp xếp:
-          {Object.entries(SORTS).map(([k, v]) => (
-            <Link key={k} href={`${base}/tong-ket?${q}&sort=${k}`} className={`chip ${sort === k ? "bg-green-700 text-white" : "bg-gray-100 text-gray-700"}`}>
-              {v}
-            </Link>
-          ))}
-        </div>
-        {rows.length === 0 ? (
-          <Empty>Chưa có dữ liệu.</Empty>
-        ) : (
-          <div className="-mx-4 overflow-x-auto px-4">
-            <table className="table min-w-[52rem]">
-              <thead>
-                <tr>
-                  <th>Tên</th>
-                  <th className="text-right">Đi/buổi</th>
-                  <th className="text-right">Nghỉ</th>
-                  <th className="text-right">Vote đi không đến</th>
-                  <th className="text-right">Không vote mà đi</th>
-                  <th>Chuyên cần</th>
-                  <th className="text-right">Tiền trận</th>
-                  <th className="text-right">Đã đóng</th>
-                  <th className="text-right">Bị phạt</th>
-                  <th className="text-right">Đã nộp phạt</th>
-                  <th className="text-right">Dư bóng</th>
-                  <th className="text-right">Dư phạt</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map(({ p, s, ball: b, penalty }) => (
-                  <tr key={p.id}>
-                    <td className="whitespace-nowrap">
-                      <Link href={`${base}/cau-thu/${p.id}`} className="font-medium">
-                        {pname(p)}
-                      </Link>
-                      {p.type === "guest" && <span className="ml-1 text-xs text-gray-400">khách</span>}
-                    </td>
-                    <td className="text-right">
-                      {s.attended}
-                      {s.scheduled ? <span className="text-gray-400">/{s.scheduled}</span> : ""}
-                    </td>
-                    <td className="text-right">{s.rested || ""}</td>
-                    <td className={`text-right ${s.noshow ? "font-semibold text-red-600" : ""}`}>{s.noshow || ""}</td>
-                    <td className={`text-right ${s.novoteCame ? "font-semibold text-amber-700" : ""}`}>{s.novoteCame || ""}</td>
-                    <td>
-                      {s.rate != null && (
-                        <div className="flex items-center gap-1.5">
-                          <div className="h-2 w-16 overflow-hidden rounded-full bg-gray-100">
-                            <div className="h-full bg-green-600" style={{ width: `${Math.round(s.rate * 100)}%` }} />
-                          </div>
-                          <span className="text-xs">{Math.round(s.rate * 100)}%</span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="text-right tabular-nums">{s.matchFees ? fmtMoney(s.matchFees) : ""}</td>
-                    <td className="text-right tabular-nums">{s.paidBall ? fmtMoney(s.paidBall) : ""}</td>
-                    <td className="text-right tabular-nums">{s.fined ? `${fmtMoney(s.fined)} (${s.fineCount})` : ""}</td>
-                    <td className="text-right tabular-nums">{s.paidPenalty ? fmtMoney(s.paidPenalty) : ""}</td>
-                    <td className={`text-right tabular-nums ${b < 0 ? "text-red-600" : ""}`}>{fmtMoney(b)}</td>
-                    <td className={`text-right tabular-nums ${penalty < 0 ? "text-red-600" : ""}`}>{fmtMoney(penalty)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <p className="mt-2 text-xs text-gray-500">
-          Chỉ tính các buổi đã chốt tiền. “Đi/buổi”: số buổi đi / số buổi có vote mà người đó thuộc danh sách. Dư âm = đang nợ (tính đến
-          cuối kỳ).
-        </p>
-      </Card>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        {(
-          [
-            ["⚽ Quỹ bóng", ball],
-            ["🚨 Quỹ phạt", pen],
-          ] as const
-        ).map(([name, s]) => (
-          <Card key={name} title={name}>
-            <div className="grid grid-cols-2 gap-2">
-              <Stat label="Đầu kỳ" value={fmtMoney(s.opening)} />
-              <Stat label="Cuối kỳ" value={fmtMoney(s.closing)} />
-              <Stat label="Tổng thu" value={fmtMoney(s.totalIncome)} />
-              <Stat label="Tổng chi" value={fmtMoney(s.totalExpense)} />
-              {s === pen && <Stat label="Phạt phát sinh" value={fmtMoney(s.fined)} sub={`còn nợ ${fmtMoney(s.debtEnd)}`} />}
-              {s === ball && (
-                <Stat
-                  label="Số buổi đã đá"
-                  value={periodMatches.length}
-                  sub={`TB ${Math.round(avgPeople)} người, ${fmtMoney(Math.round(avgCost))}/buổi`}
-                />
-              )}
-            </div>
-            {s.income.length > 0 && (
-              <>
-                <h3 className="mt-3 text-sm font-semibold text-gray-700">Thu</h3>
-                <ul className="text-sm">
-                  {s.income.map(([k, v]) => (
-                    <li key={k} className="flex justify-between py-0.5">
-                      <span>{k}</span>
-                      <span className="tabular-nums text-green-700">{fmtMoney(v)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-            {s.expense.length > 0 && (
-              <>
-                <h3 className="mt-3 text-sm font-semibold text-gray-700">Chi</h3>
-                <ul className="text-sm">
-                  {s.expense.map(([k, v]) => (
-                    <li key={k} className="flex justify-between py-0.5">
-                      <span>{k}</span>
-                      <span className="tabular-nums text-red-600">{fmtMoney(v)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
+      {tab === "tv" ? (
+        <MemberTable rows={sortRows(rows, sort)} sort={sort} base={base} q={q} label={label} />
+      ) : (
+        <>
+          <Card title="Xếp hạng">
+            <dl className="space-y-1.5 text-sm">
+              {(
+                [
+                  ["🏅 Chuyên cần nhất", ranks.rate],
+                  ["😴 Nghỉ nhiều nhất", ranks.rested],
+                  ["🚨 Vote đi mà không đến", ranks.noshow],
+                  ["💸 Bị phạt nhiều nhất", ranks.fined],
+                  ["💰 Đóng quỹ nhiều nhất", ranks.paid],
+                  ["📌 Đang nợ nhiều nhất", ranks.debt],
+                ] as const
+              ).map(([k, v]) => (
+                <div key={k} className="grid grid-cols-[10rem_1fr] gap-2">
+                  <dt className="text-gray-500">{k}</dt>
+                  <dd>{v}</dd>
+                </div>
+              ))}
+            </dl>
           </Card>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {(
+              [
+                ["⚽ Quỹ bóng", ball],
+                ["🚨 Quỹ phạt", pen],
+              ] as const
+            ).map(([name, s]) => (
+              <Card key={name} title={name}>
+                <div className="grid grid-cols-2 gap-2">
+                  <Stat label="Đầu kỳ" value={fmtMoney(s.opening)} />
+                  <Stat label="Cuối kỳ" value={fmtMoney(s.closing)} />
+                  <Stat label="Tổng thu" value={fmtMoney(s.totalIncome)} />
+                  <Stat label="Tổng chi" value={fmtMoney(s.totalExpense)} />
+                  {s === pen && <Stat label="Phạt phát sinh" value={fmtMoney(s.fined)} sub={`còn nợ ${fmtMoney(s.debtEnd)}`} />}
+                  {s === ball && (
+                    <Stat
+                      label="Số buổi đã đá"
+                      value={periodMatches.length}
+                      sub={`TB ${Math.round(avgPeople)} người, ${fmtMoney(Math.round(avgCost))}/buổi`}
+                    />
+                  )}
+                </div>
+                {s.income.length > 0 && (
+                  <>
+                    <h3 className="mt-3 text-sm font-semibold text-gray-700">Thu</h3>
+                    <ul className="text-sm">
+                      {s.income.map(([k, v]) => (
+                        <li key={k} className="flex justify-between py-0.5">
+                          <span>{k}</span>
+                          <span className="tabular-nums text-green-700">{fmtMoney(v)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {s.expense.length > 0 && (
+                  <>
+                    <h3 className="mt-3 text-sm font-semibold text-gray-700">Chi</h3>
+                    <ul className="text-sm">
+                      {s.expense.map(([k, v]) => (
+                        <li key={k} className="flex justify-between py-0.5">
+                          <span>{k}</span>
+                          <span className="tabular-nums text-red-600">{fmtMoney(v)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+/** Bảng từng thành viên: quỹ cá nhân hiện tại + số buổi đi lên trước, cột tên dính bên trái khi kéo ngang. */
+function MemberTable({
+  rows,
+  sort,
+  base,
+  q,
+  label,
+}: {
+  rows: Row[];
+  sort: keyof typeof SORTS;
+  base: string;
+  q: string;
+  label: string;
+}) {
+  const sticky = "sticky left-0 z-10 bg-white";
+  return (
+    <Card>
+      <div className="mb-2 flex flex-wrap items-center gap-1 text-xs">
+        Sắp xếp:
+        {Object.entries(SORTS).map(([k, v]) => (
+          <Link key={k} href={`${base}/tong-ket?${q}&tab=tv&sort=${k}`} className={`chip ${sort === k ? "bg-green-700 text-white" : "bg-gray-100 text-gray-700"}`}>
+            {v}
+          </Link>
         ))}
       </div>
-    </>
+      {rows.length === 0 ? (
+        <Empty>Chưa có dữ liệu.</Empty>
+      ) : (
+        <div className="-mx-4 overflow-x-auto">
+          <table className="table min-w-[44rem]">
+            <thead>
+              <tr>
+                <th className={`${sticky} pl-4`}>Tên</th>
+                <th className="text-right">Quỹ cá nhân</th>
+                <th className="text-right">Đi/buổi</th>
+                <th>Chuyên cần</th>
+                <th className="text-right">Nghỉ</th>
+                <th className="text-right">Vote đi không đến</th>
+                <th className="text-right">Không vote mà đi</th>
+                <th className="text-right">Bị phạt</th>
+                <th className="text-right">Tiền trận</th>
+                <th className="text-right pr-4">Đã đóng</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(({ p, s, now }) => (
+                <tr key={p.id}>
+                  <td className={`${sticky} whitespace-nowrap pl-4`}>
+                    <Link href={`${base}/cau-thu/${p.id}`} className="font-medium">
+                      {pname(p)}
+                    </Link>
+                    {p.type === "guest" && <span className="ml-1 text-xs text-gray-400">khách</span>}
+                  </td>
+                  <td className="text-right font-semibold whitespace-nowrap">
+                    <Money v={now} color />
+                  </td>
+                  <td className="text-right font-semibold">
+                    {s.attended}
+                    {s.scheduled ? <span className="font-normal text-gray-400">/{s.scheduled}</span> : ""}
+                  </td>
+                  <td>
+                    {s.rate != null && (
+                      <div className="flex items-center gap-1.5">
+                        <div className="h-2 w-14 overflow-hidden rounded-full bg-gray-100">
+                          <div className="h-full bg-green-600" style={{ width: `${Math.round(s.rate * 100)}%` }} />
+                        </div>
+                        <span className="text-xs">{Math.round(s.rate * 100)}%</span>
+                      </div>
+                    )}
+                  </td>
+                  <td className="text-right">{s.rested || ""}</td>
+                  <td className={`text-right ${s.noshow ? "font-semibold text-red-600" : ""}`}>{s.noshow || ""}</td>
+                  <td className={`text-right ${s.novoteCame ? "font-semibold text-amber-700" : ""}`}>{s.novoteCame || ""}</td>
+                  <td className="text-right tabular-nums whitespace-nowrap">{s.fined ? `${fmtMoney(s.fined)} (${s.fineCount})` : ""}</td>
+                  <td className="text-right tabular-nums">{s.matchFees ? fmtMoney(s.matchFees) : ""}</td>
+                  <td className="text-right tabular-nums pr-4">{s.paidBall ? fmtMoney(s.paidBall) : ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="mt-2 text-xs text-gray-500">
+        <b>Quỹ cá nhân</b>: số tiền hiện tại của mỗi người trong quỹ đội, âm (đỏ) là đang nợ. Các cột khác tính trong {label}, chỉ các buổi
+        đã chốt tiền. “Đi/buổi”: số buổi đi / số buổi có vote mà người đó thuộc danh sách.
+      </p>
+    </Card>
   );
 }

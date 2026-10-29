@@ -12,7 +12,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
   const teamId = ctx.team.id;
   const db = await getDb();
   const s = schema;
-  const [players, venues, schedules, matches, funds, transactions, penaltyTypes, auditLogs] = await Promise.all([
+  const [players, venues, schedules, matches, funds, transactions, penaltyTypes, auditLogs, paymentRequests] = await Promise.all([
     db.select().from(s.players).where(eq(s.players.teamId, teamId)),
     db.select().from(s.venues).where(eq(s.venues.teamId, teamId)),
     db.select().from(s.schedules).where(eq(s.schedules.teamId, teamId)),
@@ -21,6 +21,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
     db.select().from(s.transactions).where(eq(s.transactions.teamId, teamId)),
     db.select().from(s.penaltyTypes).where(eq(s.penaltyTypes.teamId, teamId)),
     db.select().from(s.auditLogs).where(eq(s.auditLogs.teamId, teamId)),
+    db.select().from(s.paymentRequests).where(eq(s.paymentRequests.teamId, teamId)),
   ]);
   const matchIds = matches.map((m) => m.id);
   const scheduleIds = schedules.map((x) => x.id);
@@ -44,6 +45,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
     funds,
     transactions,
     penaltyTypes,
+    paymentRequests,
     auditLogs,
   };
   return new Response(JSON.stringify(data, null, 2), {

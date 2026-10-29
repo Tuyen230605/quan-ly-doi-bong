@@ -2,9 +2,21 @@ import Link from "next/link";
 import { RESULT_LABELS, type Result } from "@/lib/labels";
 import { fmtMoney } from "@/lib/money";
 
-export function Money({ v, color = false, className = "" }: { v: number; color?: boolean; className?: string }) {
+export function Money({
+  v,
+  color = false,
+  fit = false,
+  className = "",
+}: {
+  v: number;
+  color?: boolean;
+  fit?: boolean; // ô hẹp (3 ô một hàng): số càng dài chữ càng nhỏ để không xuống dòng
+  className?: string;
+}) {
   const tone = color ? (v < 0 ? "text-red-600" : v > 0 ? "text-green-700" : "text-gray-500") : "";
-  return <span className={`tabular-nums ${tone} ${className}`}>{fmtMoney(v)}</span>;
+  const s = fmtMoney(v);
+  const size = fit ? (s.length <= 8 ? "" : s.length <= 10 ? "text-[13px]" : "text-[12px]") : "";
+  return <span className={`tabular-nums ${tone} ${size} ${className}`}>{s}</span>;
 }
 
 export function Card({
@@ -81,20 +93,24 @@ export function Stat({
   value,
   sub,
   href,
+  compact = false,
+  className = "",
 }: {
   label: string;
   value: React.ReactNode;
   sub?: React.ReactNode;
   href?: string;
+  compact?: boolean; // 3 ô một hàng trên điện thoại
+  className?: string;
 }) {
   const body = (
     <>
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="mt-0.5 text-lg font-bold text-gray-900">{value}</div>
-      {sub && <div className="mt-0.5 text-xs text-gray-500">{sub}</div>}
+      <div className="truncate text-xs text-gray-500">{label}</div>
+      <div className={`mt-0.5 font-bold text-gray-900 ${compact ? "text-[15px] whitespace-nowrap" : "text-lg"}`}>{value}</div>
+      {sub && <div className="mt-0.5 truncate text-xs text-gray-500">{sub}</div>}
     </>
   );
-  const cls = "rounded-xl border border-gray-200 bg-gray-50 px-3 py-2";
+  const cls = `min-w-0 rounded-xl border border-gray-200 bg-gray-50 py-2 ${compact ? "px-2.5" : "px-3"} ${className}`;
   return href ? (
     <Link href={href} className={`${cls} block hover:bg-gray-100`}>
       {body}

@@ -16,6 +16,7 @@ export const TX_TYPES: Record<string, string> = {
   match_cost: "Chi phí trận",
   advance: "Cầu thủ trả hộ",
   penalty: "Phạt",
+  fine_pay: "Trừ quỹ cá nhân nộp phạt",
   expense: "Chi",
   income: "Thu khác",
   transfer_out: "Chuyển quỹ (đi)",

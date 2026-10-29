@@ -1,4 +1,4 @@
-import { and, eq, gte } from "drizzle-orm";
+import { and, desc, eq, gte } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import type { Player } from "./auth";
 import { resultOf, type Result, type VoteChoice } from "./labels";
@@ -6,8 +6,19 @@ import { allocatePayments, type Fund } from "./money";
 import { pname } from "./text";
 import { addDays, todayVN, weekDeadline, weekdayOf } from "./time";
 
-const { players, transactions, matches, schedules, schedulePlayers, votes, attendances, venues, funds, penaltyTypes } =
-  schema;
+const {
+  players,
+  transactions,
+  matches,
+  schedules,
+  schedulePlayers,
+  votes,
+  attendances,
+  venues,
+  funds,
+  penaltyTypes,
+  paymentRequests,
+} = schema;
 
 export type Tx = typeof transactions.$inferSelect;
 export type Match = typeof matches.$inferSelect;
@@ -16,6 +27,7 @@ export type Venue = typeof venues.$inferSelect;
 export type FundRow = typeof funds.$inferSelect;
 export type PenaltyType = typeof penaltyTypes.$inferSelect;
 export type Vote = typeof votes.$inferSelect;
+export type PaymentRequest = typeof paymentRequests.$inferSelect;
 export type { Result, VoteChoice };
 
 export function byName(a: Player, b: Player) {
@@ -47,6 +59,11 @@ export async function getPenaltyTypes(teamId: number): Promise<PenaltyType[]> {
   return (await db.select().from(penaltyTypes).where(eq(penaltyTypes.teamId, teamId))).sort((a, b) => a.id - b.id);
 }
 
+export async function getPaymentRequests(teamId: number): Promise<PaymentRequest[]> {
+  const db = await getDb();
+  return db.select().from(paymentRequests).where(eq(paymentRequests.teamId, teamId)).orderBy(desc(paymentRequests.id));
+}
+
 export async function getActiveTx(teamId: number): Promise<Tx[]> {
   const db = await getDb();
   return db
@@ -66,6 +83,11 @@ export function playerBalances(txs: Tx[]) {
     m.set(t.playerId, b);
   }
   return m;
+}
+
+/** Quỹ cá nhân: tiền của 1 người còn trong quỹ đội (âm = đang nợ). Gộp quỹ bóng + nợ phạt cũ chưa trừ. */
+export function personal(b: Bal | undefined) {
+  return b ? b.ball + b.penalty : 0;
 }
 
 export function fundCash(txs: Tx[], fund: Fund) {

@@ -6,10 +6,12 @@ import { viewCtx } from "@/lib/team";
 import { pname } from "@/lib/text";
 
 const LINKS = [
-  { path: "/cau-thu", icon: "👥", label: "Cầu thủ", desc: "Số dư, số nợ, số trận từng người" },
+  { path: "/tong-ket?tab=tv", icon: "📋", label: "Bảng thành viên", desc: "Quỹ cá nhân, số buổi đi, chuyên cần, phạt" },
+  { path: "/nop", icon: "💳", label: "Nộp tiền", desc: "Link mở app ngân hàng, điền sẵn số tiền" },
+  { path: "/cau-thu", icon: "👥", label: "Cầu thủ", desc: "Quỹ cá nhân, số trận từng người" },
   { path: "/cong-no", icon: "📌", label: "Công nợ", desc: "Ai đang nợ quỹ bóng, quỹ phạt" },
   { path: "/tong-ket", icon: "📊", label: "Tổng kết tháng", desc: "Ai đi bao nhiêu, nghỉ, đóng tiền, bị phạt" },
-  { path: "/qr", icon: "🔳", label: "Tạo QR", desc: "QR có sẵn số tiền + nội dung" },
+  { path: "/qr", icon: "🔳", label: "Tạo QR", desc: "Ảnh QR có sẵn số tiền + nội dung" },
   { path: "/lich-su", icon: "🕘", label: "Lịch sử", desc: "Giao dịch và nhật ký thao tác" },
   { path: "/lich/co-dinh", icon: "🔁", label: "Lịch cố định", desc: "Lịch hằng tuần, hạn chót vote" },
 ];

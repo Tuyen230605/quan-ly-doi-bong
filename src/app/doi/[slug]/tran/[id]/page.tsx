@@ -27,6 +27,8 @@ import {
   indexById,
   matchTotalCost,
   paidByTx,
+  personal,
+  playerBalances,
 } from "@/lib/data";
 import { KIND_LABELS } from "@/lib/labels";
 import { fmtMoney, SPLIT_METHODS, type SplitMethod } from "@/lib/money";
@@ -34,6 +36,15 @@ import { viewCtx } from "@/lib/team";
 import { pname } from "@/lib/text";
 import { fmtDateTime, fmtMatchDate, timeLeft } from "@/lib/time";
 import { voteCounts } from "@/lib/views";
+
+/** Quỹ cá nhân còn lại sau khi trừ tiền trận / phạt. */
+function FundLeft({ v }: { v: number }) {
+  return (
+    <div className="mt-0.5 text-xs text-gray-500">
+      quỹ còn <Money v={v} color />
+    </div>
+  );
+}
 
 function MethodSelect() {
   return (
@@ -107,8 +118,14 @@ export default async function MatchPage({ params }: { params: Promise<{ slug: st
   const collected = feeTx.reduce((s, t) => s - t.playerAmount, 0);
   const total = matchTotalCost(m);
 
+  const bal = playerBalances(txs);
   const paidPenalty = paidByTx(txs, "penalty");
   const penalties = matchTxs.filter((t) => t.type === "penalty");
+  const deducted = new Set(txs.filter((t) => t.type === "fine_pay").map((t) => t.refId));
+  const finesOf = new Map<number, typeof penalties>();
+  for (const t of penalties)
+    if (t.status === "active" && t.playerId != null) finesOf.set(t.playerId, [...(finesOf.get(t.playerId) ?? []), t]);
+  const presentIds = new Set(presentRows.map((r) => r.player.id));
   const alreadyFined = new Set(penalties.filter((t) => t.status === "active").map((t) => t.playerId));
   const suggestions = rows
     .filter((r) => (r.result === "noshow" || r.result === "novote_came") && !alreadyFined.has(r.player.id))
@@ -321,6 +338,9 @@ export default async function MatchPage({ params }: { params: Promise<{ slug: st
 
       {settled && (
         <Card title={`Ai đá & tiền trận (${presentRows.length} người)`}>
+          <p className="muted mb-2">
+            Tiền trận đã trừ vào quỹ cá nhân của từng người. Ai quỹ còn đủ thì tự tính là đã trả; quỹ âm (đỏ) là đang nợ, cần nộp thêm.
+          </p>
           <ul className="divide-y divide-gray-100">
             {rows.map((r) => {
               const chargeTo = r.chargeToPlayerId && r.chargeToPlayerId !== r.player.id ? ps.get(r.chargeToPlayerId) : undefined;
@@ -336,6 +356,12 @@ export default async function MatchPage({ params }: { params: Promise<{ slug: st
                         <ResultBadge result={r.result} />
                       </div>
                       {r.note && <div className="mt-0.5 text-xs text-gray-600">📝 {r.note}</div>}
+                      {finesOf.get(r.player.id)?.map((t) => (
+                        <div key={t.id} className="mt-0.5 text-xs text-red-700">
+                          🚨 {t.category} {fmtMoney(-t.playerAmount)}
+                          {t.note && !t.note.startsWith(t.category ?? "") ? ` · ${t.note}` : ""}
+                        </div>
+                      ))}
                     </div>
                     {r.present && (
                       <div className="shrink-0 text-right">
@@ -346,6 +372,7 @@ export default async function MatchPage({ params }: { params: Promise<{ slug: st
                         <div className="mt-0.5">
                           {chargeTo ? <span className="text-xs text-gray-500">tính cho {pname(chargeTo)}</span> : payBadge(r.player.id)}
                         </div>
+                        {!chargeTo && <FundLeft v={personal(bal.get(r.player.id))} />}
                       </div>
                     )}
                   </div>
@@ -363,6 +390,7 @@ export default async function MatchPage({ params }: { params: Promise<{ slug: st
                   <div className="text-right">
                     <div className="text-sm tabular-nums">{fmtMoney(payers.get(pid)!.fee)}</div>
                     {payBadge(pid)}
+                    <FundLeft v={personal(bal.get(pid))} />
                   </div>
                 </div>
                 <PayActions pid={pid} />
@@ -415,7 +443,7 @@ export default async function MatchPage({ params }: { params: Promise<{ slug: st
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1">
                       <span className="tabular-nums">{fmtMoney(fee)}</span>
-                      {!cancelled && <PayBadge fee={fee} paid={paid} />}
+                      {!cancelled && (deducted.has(t.id) ? <Badge tone="green">✅ Đã trừ quỹ cá nhân</Badge> : <PayBadge fee={fee} paid={paid} />)}
                       {admin && !cancelled && (
                         <div className="flex gap-1">
                           {paid < fee && (
@@ -443,11 +471,18 @@ export default async function MatchPage({ params }: { params: Promise<{ slug: st
               matchId={id}
               suggestions={suggestions}
               types={penaltyTypes.filter((t) => t.enabled)}
-              players={players.filter((p) => p.status !== "left").map((p) => ({ id: p.id, name: pname(p) }))}
+              players={players
+                .filter((p) => p.status !== "left")
+                .map((p) => ({ id: p.id, name: pname(p), present: presentIds.has(p.id) }))}
               memberFee={m.memberFee}
             />
           )}
-          {admin && !settled && <p className="muted">Chốt tiền trận trước, rồi web sẽ gợi ý ai vote đi mà không đến, ai không vote mà đi để phạt hoặc ghi chú.</p>}
+          {admin && !settled && (
+            <p className="muted">
+              Chốt tiền trận trước, rồi web sẽ gợi ý ai vote đi mà không đến, ai không vote mà đi để phạt hoặc ghi chú. Có thể tích nhanh
+              nhiều người cùng lỗi (đi muộn, quên áo…), tự ghi mức phạt.
+            </p>
+          )}
           {!admin && penalties.length === 0 && <Empty>Không có ai bị phạt.</Empty>}
         </Card>
       )}
