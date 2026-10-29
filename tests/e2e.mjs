@@ -155,7 +155,9 @@ try {
   await b.goto(`${T}/toi`);
   await b.selectOption("select[name=playerId]", { label: "Bình" });
   await button(b, "Xác nhận").click();
-  await b.waitForURL("**/vote");
+  await b.waitForURL(T);
+  await expectText(b, "Bảng thành viên");
+  await b.goto(`${T}/vote`);
   await expectText(b, "Phiếu đã khoá");
   const nextCard = b.locator("section.card", { has: b.locator(`a[href='${nextHref}']`) });
   await nextCard.locator("input[name=reason]").fill("Đi công tác");
@@ -163,7 +165,7 @@ try {
   await expectText(b, "Đã vote NGHỈ");
   await b.goto(`${BASE}${nextHref}`);
   await expectText(b, "Đi công tác");
-  ok("Bình vote NGHỈ tuần sau; phiếu tuần này đã khoá");
+  ok("Bình chọn tên → về trang chủ; vote NGHỈ tuần sau; phiếu tuần này đã khoá");
 
   step = "Máy cũ / JS chưa chạy vẫn vào đội, chọn tên, vote được";
   const { page: old } = await newPage("nojs", { javaScriptEnabled: false });
@@ -175,7 +177,8 @@ try {
   await old.goto(`${T}/toi`);
   await old.selectOption("select[name=playerId]", { label: "Hải" });
   await button(old, "Xác nhận").click();
-  await old.waitForURL("**/vote");
+  await old.waitForURL(T);
+  await old.goto(`${T}/vote`);
   const oldNext = old.locator("section.card", { has: old.locator(`a[href='${nextHref}']`) });
   await oldNext.getByRole("button", { name: "✅ ĐI" }).click();
   await expectText(old, "Đã vote ĐI");

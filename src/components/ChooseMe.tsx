@@ -4,7 +4,7 @@ import { pname } from "@/lib/text";
 import { ActionForm } from "./ActionForm";
 import { Field } from "./ui";
 
-/** Chọn "tôi là ai" trong đội. next: chọn xong quay về trang này (mặc định trang vote). */
+/** Chọn "tôi là ai" trong đội. next: chọn xong quay về trang này (mặc định trang chủ của đội). */
 export function ChooseMe({
   members,
   me,

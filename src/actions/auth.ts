@@ -115,7 +115,7 @@ export async function chooseMe(_: ActionState, fd: FormData) {
       }
     }
     await setMeCookie(team.id, p.id);
-    redirect(safeNext(fd, `/doi/${team.slug}`) ?? `/doi/${team.slug}/vote`);
+    redirect(safeNext(fd, `/doi/${team.slug}`) ?? `/doi/${team.slug}`);
   });
 }
 
