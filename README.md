@@ -15,7 +15,7 @@ Web cho các đội bóng phủi, dùng chủ yếu trên điện thoại. **M�
 - **Link nộp tiền**: admin tạo link (VD quỹ tháng 11, 200k) gửi Zalo. Thành viên bấm link, chọn tên là hiện ngay mã QR có sẵn số tiền, nội dung là tên người nộp; quét bằng app ngân hàng. Admin bấm *Đã nhận* khi tiền về.
 - **Máy cũ** (dưới iOS 16.4 / Chrome 111, không chạy được JavaScript của web): vẫn vào đội, chọn tên, vote, thấy mã QR (ảnh QR tạo sẵn trên server).
 - **Quy định của đội** ở cuối trang chủ, admin tự viết.
-- **Thông số từng thành viên** (tab *Từng thành viên* trong Tổng kết: quỹ cá nhân, số buổi đi lên đầu), **tổng kết tháng** (đi, nghỉ, vote đi mà không đến, không vote mà đi, đã đóng, bị phạt), xếp hạng, copy gửi Zalo, xuất Excel.
+- **Bảng thành viên** ở cuối trang chủ và tab *Từng thành viên* trong Tổng kết (quỹ cá nhân, số buổi đi lên đầu), **tổng kết tháng** (đi, nghỉ, vote đi mà không đến, không vote mà đi, đã đóng, bị phạt), xếp hạng, copy gửi Zalo, xuất Excel.
 - **Lịch sử** giao dịch và nhật ký thao tác (ai làm gì, lúc nào).
 
 Yêu cầu chi tiết: [REQUIREMENTS.md](REQUIREMENTS.md).

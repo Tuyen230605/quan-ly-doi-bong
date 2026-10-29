@@ -3,13 +3,12 @@ import Link from "next/link";
 import { saveRules } from "@/actions/teams";
 import { getDb, schema } from "@/db";
 import { ActionForm } from "@/components/ActionForm";
-import { Qr } from "@/components/Qr";
+import { MemberTable, memberRows, memberSort, sortMemberRows } from "@/components/MemberTable";
 import { Badge, Card, Empty, Fold, Money, Stat } from "@/components/ui";
 import {
   ensureScheduleMatches,
   fundCash,
   getActiveTx,
-  getFunds,
   getMatchRoster,
   getPaymentRequests,
   getPenaltyTypes,
@@ -21,10 +20,11 @@ import {
   type PenaltyType,
 } from "@/lib/data";
 import { fmtMoney } from "@/lib/money";
+import { getSettledAttendance, playerStats } from "@/lib/summary";
 import { viewCtx } from "@/lib/team";
 import { pname } from "@/lib/text";
-import { fmtDateTime, fmtMatchDate, timeLeft, todayVN } from "@/lib/time";
-import { fundQr, voteCounts } from "@/lib/views";
+import { fmtDateTime, fmtMatchDate, fmtMonth, monthRange, timeLeft, todayVN } from "@/lib/time";
+import { voteCounts } from "@/lib/views";
 
 /** Mẫu quy định cho admin sửa, lấy từ các mức phạt đang dùng. */
 function rulesTemplate(types: PenaltyType[]) {
@@ -39,19 +39,26 @@ function rulesTemplate(types: PenaltyType[]) {
   ].join("\n");
 }
 
-export default async function HomePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function HomePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ sort?: string }>;
+}) {
   const ctx = await viewCtx(params);
   if (!ctx) return null;
   const { team, admin, me, base } = ctx;
+  const sort = memberSort((await searchParams).sort);
   await ensureScheduleMatches(team.id);
   const db = await getDb();
-  const [players, txs, funds, venues, requests, penaltyTypes] = await Promise.all([
+  const [players, txs, venues, requests, penaltyTypes, { atts, matches }] = await Promise.all([
     getPlayers(team.id),
     getActiveTx(team.id),
-    getFunds(team.id),
     getVenues(team.id),
     getPaymentRequests(team.id),
     getPenaltyTypes(team.id),
+    getSettledAttendance(team.id),
   ]);
   const ps = indexById(players);
   const vs = indexById(venues);
@@ -75,8 +82,9 @@ export default async function HomePage({ params }: { params: Promise<{ slug: str
   const myFund = me ? personal(playerBalances(txs).get(me.id)) : 0;
   const openRequests = requests.filter((r) => r.status === "open").slice(0, 3);
   const myPaid = new Set(txs.filter((t) => me && t.playerId === me.id && t.requestId).map((t) => t.requestId));
-  const qrBall = fundQr(funds.ball, { content: "QB" });
-  const qrPenalty = fundQr(funds.penalty, { content: "PHAT" });
+  const ym = today.slice(0, 7);
+  const { from, to } = monthRange(ym);
+  const members = sortMemberRows(memberRows(players, playerStats(atts, matches, txs, from, to), txs), sort);
   const venue = next?.venueId ? vs.get(next.venueId) : undefined;
 
   return (
@@ -186,35 +194,6 @@ export default async function HomePage({ params }: { params: Promise<{ slug: str
         </Card>
       )}
 
-      {(qrBall.configured || qrPenalty.configured) && (
-        <Card title="Chuyển tiền">
-          <div className="grid gap-4 sm:grid-cols-2">
-            {(
-              [
-                ["Quỹ bóng", qrBall],
-                ["Quỹ phạt", qrPenalty],
-              ] as const
-            )
-              .filter(([, q]) => q.configured)
-              .map(([title, q]) => (
-                <Qr
-                  key={title}
-                  title={title}
-                  payload={q.payload}
-                  image={q.image}
-                  lines={q.lines}
-                  copies={q.copies}
-                  fileName={`qr-${title}`}
-                  size="sm"
-                />
-              ))}
-          </div>
-          <p className="mt-2 text-center text-xs text-gray-500">
-            Muốn QR có sẵn số tiền? <Link href={`${base}/qr`} className="underline">Tạo QR</Link>
-          </p>
-        </Card>
-      )}
-
       {(team.rules || admin) && (
         <Card title="📜 Quy định của đội" id="quy-dinh">
           {team.rules ? (
@@ -240,6 +219,22 @@ export default async function HomePage({ params }: { params: Promise<{ slug: str
           )}
         </Card>
       )}
+
+      <MemberTable
+        id="thanh-vien"
+        title={`👥 Bảng thành viên tháng ${fmtMonth(ym)}`}
+        right={
+          <Link href={`${base}/tong-ket?tab=tv`} className="text-sm text-green-700">
+            Tháng khác →
+          </Link>
+        }
+        rows={members}
+        sort={sort}
+        sortHref={(k) => `${base}?sort=${k}#thanh-vien`}
+        base={base}
+        label={`tháng ${fmtMonth(ym)}`}
+        meId={me?.id}
+      />
     </>
   );
 }
