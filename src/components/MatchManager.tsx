@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { saveAttendance, settleMatch, type AttendanceItem } from "@/actions/matches";
 import type { ActionState } from "@/lib/action";
+import { RESULT_LABELS, resultOf, type Result, type VoteChoice } from "@/lib/labels";
 import { computeFees, fmtMoney, parseMoney, SPLIT_METHODS, type SplitMethod } from "@/lib/money";
 
 export type ManagerRow = {
@@ -10,7 +11,8 @@ export type ManagerRow = {
   name: string;
   isGuest: boolean;
   inRoster: boolean;
-  voteLabel: string | null;
+  voteChoice: VoteChoice | null;
+  voteReason: string | null;
   present: boolean;
   chargeToPlayerId: number | null;
 };
@@ -19,11 +21,26 @@ type Person = ManagerRow & { key: number; newGuestName?: string };
 
 type Props = {
   matchId: number;
+  voteMode: string | null;
   rows: ManagerRow[];
   candidates: { id: number; name: string; isGuest: boolean; hostPlayerId: number | null }[];
   members: { id: number; name: string }[];
   costs: { field: number; water: number; referee: number; other: number };
   defaults: { method: SplitMethod; step: number; fixedFee: number; guestFee: number };
+};
+
+const RESULT_STYLE: Record<Result, string> = {
+  ontime: "text-green-700",
+  extra: "text-green-700",
+  noshow: "font-semibold text-red-600",
+  novote_came: "font-semibold text-amber-700",
+  changed: "text-blue-700",
+  excused: "text-gray-500",
+  novote: "text-gray-400",
+};
+const RESULT_HINT: Partial<Record<Result, string>> = {
+  noshow: " → gợi ý phạt",
+  novote_came: " → tuỳ admin ghi chú / phạt",
 };
 
 const COSTS = [
@@ -33,7 +50,7 @@ const COSTS = [
   ["other", "Khác"],
 ] as const;
 
-export function MatchManager({ matchId, rows, candidates, members, costs: initialCosts, defaults }: Props) {
+export function MatchManager({ matchId, voteMode, rows, candidates, members, costs: initialCosts, defaults }: Props) {
   const [people, setPeople] = useState<Person[]>(rows.map((r) => ({ ...r, key: r.playerId })));
   const [pick, setPick] = useState("");
   const [guestName, setGuestName] = useState("");
@@ -82,7 +99,7 @@ export function MatchManager({ matchId, rows, candidates, members, costs: initia
     if (!c) return;
     setPeople((ps) => [
       ...ps,
-      { key: c.id, playerId: c.id, name: c.name, isGuest: c.isGuest, inRoster: false, voteLabel: null, present: true, chargeToPlayerId: c.hostPlayerId },
+      { key: c.id, playerId: c.id, name: c.name, isGuest: c.isGuest, inRoster: false, voteChoice: null, voteReason: null, present: true, chargeToPlayerId: c.hostPlayerId },
     ]);
     setPick("");
   };
@@ -92,7 +109,7 @@ export function MatchManager({ matchId, rows, candidates, members, costs: initia
     if (!name) return;
     setPeople((ps) => [
       ...ps,
-      { key: tempId, playerId: tempId, newGuestName: name, name, isGuest: true, inRoster: false, voteLabel: null, present: true, chargeToPlayerId: null },
+      { key: tempId, playerId: tempId, newGuestName: name, name, isGuest: true, inRoster: false, voteChoice: null, voteReason: null, present: true, chargeToPlayerId: null },
     ]);
     setTempId((t) => t - 1);
     setGuestName("");
@@ -109,6 +126,20 @@ export function MatchManager({ matchId, rows, candidates, members, costs: initia
   };
 
   const guests = present.filter((p) => p.isGuest).length;
+  const hasVote = voteMode != null;
+  const resultFor = (p: Person) => resultOf({ hasVote, inRoster: p.inRoster, voteMode, voteChoice: p.voteChoice, present: p.present });
+  const countOf = (r: Result) => people.filter((p) => resultFor(p) === r).length;
+  const groups = hasVote
+    ? [
+        { title: "Vote ĐI", list: people.filter((p) => p.inRoster && p.voteChoice === "going") },
+        { title: "Vote NGHỈ", list: people.filter((p) => p.inRoster && p.voteChoice === "absent") },
+        {
+          title: `Chưa vote (${voteMode === "going" ? "coi như không đi" : "coi như đi"})`,
+          list: people.filter((p) => p.inRoster && !p.voteChoice),
+        },
+        { title: "Ngoài danh sách / khách", list: people.filter((p) => !p.inRoster) },
+      ]
+    : [{ title: "", list: people }];
 
   return (
     <div className="space-y-4">
@@ -119,47 +150,75 @@ export function MatchManager({ matchId, rows, candidates, members, costs: initia
             {present.length} người · {present.length - guests} thành viên + {guests} khách
           </span>
         </div>
-        <p className="muted mb-2">Chạm vào tên để đổi Có đá / Không đến.</p>
-        <ul className="divide-y divide-gray-100">
-          {people.map((p) => (
-            <li key={p.key} className="py-1.5">
-              <button
-                type="button"
-                onClick={() => update(p.key, { present: !p.present })}
-                className={`flex w-full items-center justify-between gap-2 rounded-lg px-2 py-2 text-left ${
-                  p.present ? "bg-green-50" : "bg-white"
-                }`}
-              >
-                <span className="min-w-0">
-                  <span className="font-medium">{p.name}</span>
-                  {p.isGuest && <span className="chip ml-1.5 bg-blue-100 text-blue-700">Khách</span>}
-                  {!p.inRoster && !p.isGuest && <span className="chip ml-1.5 bg-gray-100 text-gray-600">Ngoài lịch</span>}
-                  {p.voteLabel && <span className="block text-xs text-gray-500">{p.voteLabel}</span>}
-                </span>
-                <span className={`shrink-0 text-sm font-semibold ${p.present ? "text-green-700" : "text-gray-400"}`}>
-                  {p.present ? "✅ Có đá" : "— Không đến"}
-                </span>
-              </button>
-              {p.isGuest && p.present && (
-                <label className="mt-1 flex items-center gap-2 px-2 text-xs text-gray-600">
-                  Tiền tính cho
-                  <select
-                    className="input !w-auto !py-1 !text-sm"
-                    value={p.chargeToPlayerId ?? ""}
-                    onChange={(e) => update(p.key, { chargeToPlayerId: e.target.value ? Number(e.target.value) : null })}
-                  >
-                    <option value="">Khách tự trả</option>
-                    {members.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        Khách của {m.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+        <p className="muted mb-2">
+          Sau trận, chạm vào tên để đánh dấu Có đá / Không đến. Dòng nhỏ bên dưới cho biết kết quả theo vote.
+        </p>
+        {hasVote && (
+          <div className="mb-3 flex flex-wrap gap-1.5 text-xs">
+            <span className="chip bg-red-100 text-red-700">Vote đi mà không đến: {countOf("noshow")}</span>
+            <span className="chip bg-amber-100 text-amber-800">Không vote mà đi: {countOf("novote_came")}</span>
+            <span className="chip bg-blue-100 text-blue-700">Vote nghỉ vẫn đến: {countOf("changed")}</span>
+          </div>
+        )}
+        {groups
+          .filter((g) => g.list.length)
+          .map((g) => (
+            <div key={g.title} className="mb-2">
+              {g.title && (
+                <h3 className="mt-2 text-xs font-semibold tracking-wide text-gray-500 uppercase">
+                  {g.title} · {g.list.length}
+                </h3>
               )}
-            </li>
+              <ul className="divide-y divide-gray-100">
+                {g.list.map((p) => {
+                  const r = resultFor(p);
+                  return (
+                    <li key={p.key} className="py-1.5" data-player={p.name}>
+                      <button
+                        type="button"
+                        onClick={() => update(p.key, { present: !p.present })}
+                        className={`flex w-full items-center justify-between gap-2 rounded-lg px-2 py-2 text-left ${
+                          p.present ? "bg-green-50" : "bg-white"
+                        }`}
+                      >
+                        <span className="min-w-0">
+                          <span className="font-medium">{p.name}</span>
+                          {p.isGuest && <span className="chip ml-1.5 bg-blue-100 text-blue-700">Khách</span>}
+                          {p.voteReason && <span className="ml-1.5 text-xs text-gray-500">“{p.voteReason}”</span>}
+                          {r && hasVote && (
+                            <span className={`block text-xs ${RESULT_STYLE[r]}`}>
+                              {RESULT_LABELS[r]}
+                              {RESULT_HINT[r] ?? ""}
+                            </span>
+                          )}
+                        </span>
+                        <span className={`shrink-0 text-sm font-semibold ${p.present ? "text-green-700" : "text-gray-400"}`}>
+                          {p.present ? "✅ Có đá" : "— Không đến"}
+                        </span>
+                      </button>
+                      {p.isGuest && p.present && (
+                        <label className="mt-1 flex items-center gap-2 px-2 text-xs text-gray-600">
+                          Tiền tính cho
+                          <select
+                            className="input !w-auto !py-1 !text-sm"
+                            value={p.chargeToPlayerId ?? ""}
+                            onChange={(e) => update(p.key, { chargeToPlayerId: e.target.value ? Number(e.target.value) : null })}
+                          >
+                            <option value="">Khách tự trả</option>
+                            {members.map((m) => (
+                              <option key={m.id} value={m.id}>
+                                Khách của {m.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           ))}
-        </ul>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <div className="flex gap-2">
             <select className="input" value={pick} onChange={(e) => setPick(e.target.value)}>

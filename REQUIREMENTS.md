@@ -1,6 +1,6 @@
 # Web Quản Lý Đội Bóng — Yêu cầu tính năng
 
-> Bản 0.4 · 29/10/2026 · Đã có code, cách chạy và deploy xem [README.md](README.md)
+> Bản 0.5 · 29/10/2026 · Đã có code, cách chạy và deploy xem [README.md](README.md)
 
 ## 1. Mục tiêu
 
@@ -63,7 +63,7 @@ Quy mô: **một web cho nhiều đội**. Mỗi đội khoảng 15–40 cầu t
   - *Khách*: đá vãng lai, thường trả tiền ngay tại sân.
 - **Buổi đá / Trận**: 1 lần đá cụ thể (ngày, giờ, sân).
 - **Lịch cố định**: mẫu lặp lại hằng tuần (VD tối thứ 4). Lịch này tự sinh ra các buổi đá và phiếu vote mỗi tuần.
-- **Lịch lẻ**: buổi đá tạo riêng, không có vote, không xét phạt.
+- **Lịch lẻ**: buổi đá tạo riêng (giao hữu, đá bù). Cũng có vote + hạn chót, mặc định *không vote = không đi*.
 - **Phiếu vote tuần**: mỗi tuần của lịch cố định có 1 phiếu để thành viên báo đi hay nghỉ. Phiếu tự khoá vào hạn chót mà người tạo lịch chọn (VD 23:59 chủ nhật).
 - **Vắng không báo**: vote đi (hoặc không vote nghỉ) nhưng không đến. Admin có thể đưa vào danh sách phạt.
 - **Quỹ bóng** và **Quỹ phạt**: 2 quỹ tách biệt hoàn toàn. Mỗi quỹ có số dư, sổ thu chi và mã QR riêng.
@@ -180,7 +180,12 @@ Admin của đội **tải lên ảnh QR ngân hàng** cho từng quỹ (quỹ b
 
 ### F4. Tạo lịch mới (buổi đá đơn lẻ)
 
-**Mục đích:** tạo 1 buổi đá không nằm trong lịch cố định (giao hữu, đá bù, đá giải). Lịch lẻ tạo bình thường: **không có vote, không xét phạt chuyên cần**. Admin chỉ cần điểm danh ai đá (F6.2) để chia tiền.
+**Mục đích:** tạo 1 buổi đá không nằm trong lịch cố định (giao hữu, đá bù, đá giải). Lịch lẻ **cũng có vote** như lịch cố định:
+
+- Bật/tắt vote cho từng buổi (mặc định bật). Danh sách vote: mọi thành viên đang đá.
+- Chế độ mặc định **Vote đi: không vote = không đi** (đổi được sang vote nghỉ).
+- **Hạn vote** chọn ngày + giờ; để trống = khoá trước giờ đá 2 tiếng. Hạn vote phải trước giờ đá.
+- Sau trận xử lý giống lịch cố định: điểm danh theo vote (F6.2), gợi ý phạt (F9).
 
 **Thông tin:**
 
@@ -258,7 +263,7 @@ Sắp diễn ra ──(chốt tiền)──► Đã chốt
 
 **Mục đích:** biết trước ai đi, ai nghỉ (vote). Ghi lại ai thực sự đá (điểm danh) để chia tiền (F7) và để gợi ý phạt (F9).
 
-#### 6.1 Vote (chỉ có ở lịch cố định)
+#### 6.1 Vote (lịch cố định và lịch lẻ)
 
 **Hai chế độ**, người tạo lịch chọn:
 
@@ -288,13 +293,13 @@ Sắp diễn ra ──(chốt tiền)──► Đã chốt
 
 #### 6.2 Điểm danh (mọi buổi đá)
 
-- **Lịch cố định**: sau hạn vote, danh sách điểm danh được điền sẵn theo kết quả vote, người "Đi" được tích sẵn "Có đá". Admin chỉ cần sửa người không đến, hoặc người đã vote nghỉ mà vẫn đến.
-- **Lịch lẻ**: không có vote, admin tích tay ai đá.
+- **Buổi có vote** (lịch cố định, lịch lẻ bật vote): sau trận, danh sách điểm danh **chia nhóm theo vote**: *Vote ĐI*, *Vote NGHỈ*, *Chưa vote*, *Ngoài danh sách / khách*. Người “đi” (vote đi, hoặc chưa vote ở chế độ vote nghỉ) được tích sẵn “Có đá”. Admin tích lại cho đúng thực tế; dưới mỗi tên hiện ngay kết quả (bảng dưới). Đầu danh sách đếm: vote đi mà không đến / không vote mà đi / vote nghỉ vẫn đến.
+- **Buổi tắt vote**: admin tích tay ai đá.
 - **Thêm khách**: gõ tên → chọn khách cũ, hoặc tạo khách mới ngay tại chỗ (chỉ cần tên). Có thể chọn thêm "Khách của: <thành viên>". Khi đó tiền của khách được tính vào số dư của người dẫn.
 - Đầu màn hình luôn hiện tổng số người đá, VD: `14 người · 12 thành viên + 2 khách`.
 - Nút **Copy danh sách** để dán vào Zalo.
 
-**Kết hợp vote và điểm danh** (chỉ áp dụng cho lịch cố định):
+**Kết hợp vote và điểm danh** (mọi buổi có vote):
 
 | Vote (sau hạn chót) | Thực tế | Kết quả | Trừ tiền trận | Có trong gợi ý phạt |
 |---|---|---|:-:|:-:|
@@ -302,8 +307,10 @@ Sắp diễn ra ──(chốt tiền)──► Đã chốt
 | Đi | Không đến | ❌ **Vắng không báo** | Không | **Có** |
 | Nghỉ | Không đến | 🟡 Nghỉ có báo | Không | Không |
 | Nghỉ | Có đá | 🔄 Đổi ý, vẫn đến | Có | Không |
+| Chưa vote (chế độ vote đi) | Có đá | ⚠️ **Không vote mà đi** | Có | Có, **không tích sẵn**: admin tuỳ phạt hoặc chỉ ghi chú |
+| Chưa vote (chế độ vote đi) | Không đến | Không vote, không đến | Không | Không |
 
-> Ở chế độ **Vote nghỉ**, người không vote được tính là "Đi". Ở chế độ **Vote đi**, người không vote được tính là "Nghỉ". Không vote mà vẫn đến đá thì tính tiền trận bình thường, không phạt.
+> Ở chế độ **Vote nghỉ**, người không vote được tính là "Đi" (không đến = vắng không báo). Ở chế độ **Vote đi** (mặc định của lịch lẻ), người không vote được tính là "không đi"; nếu vẫn đến thì là *không vote mà đi*.
 >
 > Người **vắng không báo** không bị trừ tiền trận, nhưng bị phạt **số tiền bằng tiền trận của các thành viên khác**, tiền đó vào quỹ phạt (F9).
 
@@ -404,7 +411,9 @@ Sắp diễn ra ──(chốt tiền)──► Đã chốt
 
 **Danh sách phạt của 1 buổi** — admin nhập tay, web gợi ý:
 1. Mở buổi đá → tab **Phạt**.
-2. Web gợi ý sẵn những người **Vắng không báo** (theo bảng ở F6.2). Admin tích chọn ai bị phạt.
+2. Web gợi ý sẵn (theo bảng ở F6.2):
+   - **Vote đi mà không đến**: tích sẵn, mức phạt = tiền trận mỗi người.
+   - **Không vote mà đi**: *không* tích sẵn. Admin tuỳ tích để phạt (mức mặc định của lỗi “Không vote mà đi”, VD 20.000đ), hoặc chỉ ghi chú (ghi chú hiện dưới tên người đó trong buổi).
 3. Admin **thêm tay** bất kỳ ai, với bất kỳ lỗi nào (đi muộn, quên áo...).
 4. Mức phạt được điền sẵn theo Cài đặt, sửa được cho từng người. Người được gợi ý mà admin không phạt thì nên ghi lý do (ốm, việc gấp...).
 5. Bấm **Xác nhận** → mỗi người có 1 giao dịch phạt trong quỹ phạt. Tổng tiền phạt của quỹ tăng lên, người bị phạt có khoản nợ phạt cho đến khi nộp.
@@ -422,7 +431,7 @@ Sắp diễn ra ──(chốt tiền)──► Đã chốt
 
 **Quy tắc:**
 - Web chỉ **gợi ý**, không tự phạt ai. Admin luôn là người quyết định.
-- Gợi ý không bao gồm: khách, người không thuộc danh sách của lịch, buổi đã huỷ, buổi lịch lẻ. Admin vẫn thêm tay những người này được nếu muốn.
+- Gợi ý không bao gồm: khách, người ngoài danh sách vote, buổi đã huỷ, buổi tắt vote. Admin vẫn thêm tay những người này được nếu muốn.
 - Tiền phạt **chỉ** ghi vào quỹ phạt, không trừ vào số dư quỹ bóng.
 - Đã phạt rồi muốn huỷ → giao dịch phạt chuyển "Đã huỷ" kèm lý do, không bị xoá.
 - Trạng thái đã nộp / chưa nộp phạt tính giống F8. Thành viên nộp phạt bằng QR có nội dung `PHAT <tên gọi>` (F3).
@@ -526,11 +535,12 @@ Mỗi người 1 dòng. Bấm tiêu đề cột để sắp xếp.
 
 | Cột | Cách tính |
 |---|---|
-| Số buổi theo lịch | Số buổi của lịch cố định mà người đó thuộc danh sách, không tính buổi đã huỷ |
+| Số buổi có vote | Số buổi có vote (lịch cố định hoặc lịch lẻ) mà người đó thuộc danh sách, không tính buổi đã huỷ |
 | Số buổi đi | Số buổi "Có đá", gồm cả lịch cố định và lịch lẻ |
 | Nghỉ có báo | Số buổi vote nghỉ và không đến |
-| Vắng không báo | Số buổi vote đi (hoặc không vote nghỉ) mà không đến |
-| **Tỷ lệ chuyên cần** | Số buổi đi (chỉ tính lịch cố định) ÷ Số buổi theo lịch |
+| Vote đi mà không đến | Số buổi vote đi (hoặc không vote ở chế độ vote nghỉ) mà không đến |
+| Không vote mà đi | Số buổi không vote (chế độ vote đi) mà vẫn đến |
+| **Tỷ lệ chuyên cần** | Số buổi đi (trong các buổi có vote) ÷ Số buổi có vote |
 | Tiền trận | Tổng tiền trận bị trừ |
 | Đã đóng quỹ bóng | Tổng tiền đã nộp vào quỹ bóng |
 | Bị phạt | Tổng tiền phạt (và số lần bị phạt) |
@@ -650,7 +660,8 @@ Trên điện thoại dùng thanh menu dưới đáy: **Trang chủ · Vote · L
 
 **Đã chốt:**
 - “Tiền chuyên cần” = tiền phạt. Người vắng không báo trả bằng tiền trận của các thành viên khác, tiền đó vào quỹ phạt.
-- Lịch cố định có vote hằng tuần; người tạo lịch chọn vote nghỉ hay vote đi và hạn chót (VD đêm chủ nhật trước tuần đá). Lịch không cố định tạo bình thường.
+- Lịch cố định có vote hằng tuần; người tạo lịch chọn vote nghỉ hay vote đi và hạn chót (VD đêm chủ nhật trước tuần đá).
+- Lịch lẻ cũng có vote + hạn vote; mặc định không vote = không đi. Vote đi mà không đến → phạt; không vote mà đi → admin tuỳ ghi chú hoặc phạt. Sau trận admin tích ai đi / không đi theo từng nhóm vote. Lịch cố định xử lý giống hệt.
 - Ở chế độ vote đi: không vote mà vẫn đến thì không sao (tính tiền trận bình thường, không phạt).
 - Danh sách phạt do admin quyết định (web chỉ gợi ý); quỹ phạt cho phép admin tự nhập nguồn thu và số tiền.
 - Thành viên xem được thông số từng người (số dư, số nợ, số trận…).

@@ -8,7 +8,7 @@ import { FUND_NAMES, fmtMoney, parseMoney, type Fund } from "@/lib/money";
 import { teamAdmin } from "@/lib/team";
 import { fmtDM, todayVN } from "@/lib/time";
 
-const { transactions, matches, penaltyTypes, players } = schema;
+const { transactions, matches, penaltyTypes, players, attendances } = schema;
 
 function fundOf(fd: FormData): Fund {
   return str(fd, "fund") === "penalty" ? "penalty" : "ball";
@@ -177,14 +177,15 @@ export async function addPenalties(
   teamId: number,
   matchId: number | null,
   items: PenaltyItem[],
-  skipped: { name: string; note: string }[] = [],
+  skipped: { playerId: number; name: string; note: string }[] = [],
 ): Promise<ActionState> {
   return run(async () => {
     const { user, team } = await teamAdmin(teamId);
     const db = await getDb();
-    const allowed = new Set(await teamPlayerIds(team.id, items.map((i) => i.playerId)));
+    const allowed = new Set(await teamPlayerIds(team.id, [...items, ...skipped].map((i) => i.playerId)));
     const valid = items.filter((i) => allowed.has(i.playerId) && i.amount > 0);
-    if (!valid.length) fail("Chưa có ai trong danh sách phạt.");
+    const notes = skipped.filter((s) => allowed.has(s.playerId) && s.note.trim());
+    if (!valid.length && !(matchId && notes.length)) fail("Chưa có ai trong danh sách phạt.");
     let date = todayVN();
     let label = "phạt lẻ";
     if (matchId) {
@@ -196,6 +197,14 @@ export async function addPenalties(
       date = m.date;
       label = `buổi ${fmtDM(m.date)}`;
     }
+    // Không phạt nhưng có ghi chú (VD không vote mà đi lần đầu): lưu vào điểm danh của buổi.
+    if (matchId)
+      for (const n of notes)
+        await db
+          .update(attendances)
+          .set({ note: n.note.trim() })
+          .where(and(eq(attendances.matchId, matchId), eq(attendances.playerId, n.playerId)));
+    if (!valid.length) return `Đã lưu ${notes.length} ghi chú`;
     const types = new Map((await db.select().from(penaltyTypes).where(eq(penaltyTypes.teamId, team.id))).map((t) => [t.id, t]));
     await db.insert(transactions).values(
       valid.map((i) => {
@@ -218,7 +227,7 @@ export async function addPenalties(
     const total = valid.reduce((s, i) => s + i.amount, 0);
     await audit(team.id, { admin: user }, "Phạt", `${label}: ${valid.length} khoản, tổng ${fmtMoney(total)}`);
     if (skipped.length)
-      await audit(team.id, { admin: user }, "Miễn phạt", `${label}: ${skipped.map((s) => `${s.name}${s.note ? ` (${s.note})` : ""}`).join(", ")}`);
+      await audit(team.id, { admin: user }, "Không phạt", `${label}: ${skipped.map((s) => `${s.name}${s.note ? ` (${s.note})` : ""}`).join(", ")}`);
     return `Đã phạt ${valid.length} khoản, cộng ${fmtMoney(total)} vào quỹ phạt`;
   });
 }

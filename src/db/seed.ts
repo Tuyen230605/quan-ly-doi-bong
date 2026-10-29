@@ -23,6 +23,7 @@ export async function seedTeam(db: Pick<DB, "insert">, teamId: number) {
     .insert(penaltyTypes)
     .values([
       { teamId, name: "Vắng không báo", amountMode: "match_fee", defaultAmount: 50000, isNoShow: true },
+      { teamId, name: "Không vote mà đi", defaultAmount: 20000, isNoVoteCame: true },
       { teamId, name: "Đi muộn", defaultAmount: 10000 },
       { teamId, name: "Quên áo", defaultAmount: 10000 },
     ])

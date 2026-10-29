@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { resultOf } from "../src/lib/labels";
 import { allocatePayments, computeFees, fmtMoney, type LedgerEntry } from "../src/lib/money";
 import { transferContent } from "../src/lib/text";
 import { computeDeadline, vnParts, weekDeadline, weekdayOf } from "../src/lib/time";
@@ -79,6 +80,32 @@ describe("tiền", () => {
   it("trả thiếu", () => {
     const paid = allocatePayments([e(1, 20000, "2026-10-01"), e(2, -55000, "2026-10-15", { matchId: 1 })]);
     expect(paid.get(2)).toBe(20000);
+  });
+});
+
+describe("kết quả sau trận", () => {
+  const r = (voteMode: string | null, voteChoice: "going" | "absent" | null, present: boolean, inRoster = true) =>
+    resultOf({ hasVote: voteMode != null, inRoster, voteMode, voteChoice, present });
+
+  it("vote đi (lịch lẻ mặc định): không vote = không đi", () => {
+    expect(r("going", "going", true)).toBe("ontime");
+    expect(r("going", "going", false)).toBe("noshow");
+    expect(r("going", null, true)).toBe("novote_came");
+    expect(r("going", null, false)).toBe("novote");
+    expect(r("going", "absent", true)).toBe("changed");
+    expect(r("going", "absent", false)).toBe("excused");
+  });
+
+  it("vote nghỉ: không vote = đi", () => {
+    expect(r("absent", null, true)).toBe("ontime");
+    expect(r("absent", null, false)).toBe("noshow");
+    expect(r("absent", "absent", false)).toBe("excused");
+  });
+
+  it("khách / không bật vote chỉ ghi nhận có đá", () => {
+    expect(r("going", null, true, false)).toBe("extra");
+    expect(r(null, null, true)).toBe("extra");
+    expect(r(null, null, false)).toBeNull();
   });
 });
 

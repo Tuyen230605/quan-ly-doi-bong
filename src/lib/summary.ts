@@ -6,11 +6,12 @@ import { TX_TYPES, type Fund } from "./money";
 export type Att = typeof schema.attendances.$inferSelect;
 
 export type PlayerStats = {
-  scheduled: number; // số buổi theo lịch (thuộc danh sách lịch cố định)
+  scheduled: number; // số buổi có vote mà người đó thuộc danh sách được vote
   attendedScheduled: number;
-  attended: number; // mọi buổi có đá (cả lịch lẻ)
-  rested: number; // nghỉ có báo / không vote
-  noshow: number; // vắng không báo
+  attended: number; // mọi buổi có đá
+  rested: number; // nghỉ có báo / không vote không đến
+  noshow: number; // vote đi (hoặc mặc định đi) mà không đến
+  novoteCame: number; // không vote mà vẫn đến
   rate: number | null;
   matchFees: number;
   paidBall: number;
@@ -25,6 +26,7 @@ export const emptyStats = (): PlayerStats => ({
   attended: 0,
   rested: 0,
   noshow: 0,
+  novoteCame: 0,
   rate: null,
   matchFees: 0,
   paidBall: 0,
@@ -68,11 +70,12 @@ export function playerStats(
     if (!m || !inRange(m.date, from, to)) continue;
     const s = get(a.playerId);
     if (a.present) s.attended++;
-    if (a.inRoster && m.scheduleId) {
+    if (a.inRoster) {
       s.scheduled++;
       if (a.present) s.attendedScheduled++;
     }
     if (a.result === "noshow") s.noshow++;
+    if (a.result === "novote_came") s.novoteCame++;
     if (a.result === "excused" || a.result === "novote") s.rested++;
   }
   for (const t of txs) {

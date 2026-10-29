@@ -65,9 +65,13 @@ export default async function PlayerPage({ params }: { params: Promise<{ slug: s
         <Stat
           label="Chuyên cần"
           value={all?.rate != null ? `${Math.round(all.rate * 100)}%` : "—"}
-          sub={all?.scheduled ? `${all.attendedScheduled}/${all.scheduled} buổi theo lịch` : ""}
+          sub={all?.scheduled ? `${all.attendedScheduled}/${all.scheduled} buổi có vote` : ""}
         />
-        <Stat label="Vắng không báo" value={all?.noshow ?? 0} sub={`Nghỉ có báo: ${all?.rested ?? 0}`} />
+        <Stat
+          label="Vote đi mà không đến"
+          value={all?.noshow ?? 0}
+          sub={`Không vote mà đi: ${all?.novoteCame ?? 0} · Nghỉ: ${all?.rested ?? 0}`}
+        />
         <Stat label="Bị phạt" value={fmtMoney(all?.fined ?? 0)} sub={`${all?.fineCount ?? 0} lần`} />
         <Stat label="Đã đóng quỹ bóng" value={fmtMoney(all?.paidBall ?? 0)} />
         <Stat label="Tiền trận đã tính" value={fmtMoney(all?.matchFees ?? 0)} />
@@ -95,7 +99,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ slug: s
                 <th>Tháng</th>
                 <th className="text-right">Đi</th>
                 <th className="text-right">Nghỉ</th>
-                <th className="text-right">Vắng KB</th>
+                <th className="text-right">Vote đi không đến</th>
                 <th className="text-right">Đã đóng</th>
                 <th className="text-right">Bị phạt</th>
               </tr>

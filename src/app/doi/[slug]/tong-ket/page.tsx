@@ -89,7 +89,7 @@ export default async function SummaryPage({
     `Số buổi: ${periodMatches.length} · Trung bình ${Math.round(avgPeople)} người/buổi`,
     `🏅 Chuyên cần: ${ranks.rate}`,
     `😴 Nghỉ nhiều: ${ranks.rested}`,
-    `🚨 Vắng không báo: ${ranks.noshow}`,
+    `🚨 Vote đi mà không đến: ${ranks.noshow}`,
     `💸 Bị phạt nhiều: ${ranks.fined}`,
     `💰 Đóng quỹ nhiều: ${ranks.paid}`,
     `📌 Đang nợ: ${ranks.debt}`,
@@ -122,7 +122,7 @@ export default async function SummaryPage({
             [
               ["🏅 Chuyên cần nhất", ranks.rate],
               ["😴 Nghỉ nhiều nhất", ranks.rested],
-              ["🚨 Vắng không báo", ranks.noshow],
+              ["🚨 Vote đi mà không đến", ranks.noshow],
               ["💸 Bị phạt nhiều nhất", ranks.fined],
               ["💰 Đóng quỹ nhiều nhất", ranks.paid],
               ["📌 Đang nợ nhiều nhất", ranks.debt],
@@ -149,13 +149,14 @@ export default async function SummaryPage({
           <Empty>Chưa có dữ liệu.</Empty>
         ) : (
           <div className="-mx-4 overflow-x-auto px-4">
-            <table className="table min-w-[46rem]">
+            <table className="table min-w-[52rem]">
               <thead>
                 <tr>
                   <th>Tên</th>
-                  <th className="text-right">Đi/lịch</th>
+                  <th className="text-right">Đi/buổi</th>
                   <th className="text-right">Nghỉ</th>
-                  <th className="text-right">Vắng KB</th>
+                  <th className="text-right">Vote đi không đến</th>
+                  <th className="text-right">Không vote mà đi</th>
                   <th>Chuyên cần</th>
                   <th className="text-right">Tiền trận</th>
                   <th className="text-right">Đã đóng</th>
@@ -180,6 +181,7 @@ export default async function SummaryPage({
                     </td>
                     <td className="text-right">{s.rested || ""}</td>
                     <td className={`text-right ${s.noshow ? "font-semibold text-red-600" : ""}`}>{s.noshow || ""}</td>
+                    <td className={`text-right ${s.novoteCame ? "font-semibold text-amber-700" : ""}`}>{s.novoteCame || ""}</td>
                     <td>
                       {s.rate != null && (
                         <div className="flex items-center gap-1.5">
@@ -203,7 +205,8 @@ export default async function SummaryPage({
           </div>
         )}
         <p className="mt-2 text-xs text-gray-500">
-          Chỉ tính các buổi đã chốt tiền. “Đi/lịch”: số buổi đi / số buổi theo lịch cố định. Dư âm = đang nợ (tính đến cuối kỳ).
+          Chỉ tính các buổi đã chốt tiền. “Đi/buổi”: số buổi đi / số buổi có vote mà người đó thuộc danh sách. Dư âm = đang nợ (tính đến
+          cuối kỳ).
         </p>
       </Card>
 

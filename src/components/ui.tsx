@@ -59,6 +59,7 @@ const RESULT_TONES: Record<Result, keyof typeof TONES> = {
   noshow: "red",
   excused: "amber",
   novote: "gray",
+  novote_came: "amber",
   changed: "blue",
   extra: "green",
 };

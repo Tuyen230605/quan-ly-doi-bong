@@ -9,7 +9,7 @@ import { getActiveTx, getMatchRoster, getPlayers, indexById, paidByTx, type Matc
 import { computeFees, fmtMoney, parseMoney, type SplitMethod } from "@/lib/money";
 import { teamAdmin } from "@/lib/team";
 import { pname } from "@/lib/text";
-import { fmtDM, todayVN } from "@/lib/time";
+import { fmtDM, todayVN, vnToDate } from "@/lib/time";
 
 const { matches, attendances, votes, transactions, players, venues, schedulePlayers } = schema;
 
@@ -35,6 +35,18 @@ async function readMatchForm(db: DB, fd: FormData, team: Team) {
   };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(v.date)) fail("Chọn ngày đá.");
   if (!/^\d{2}:\d{2}$/.test(v.startTime)) fail("Nhập giờ bắt đầu.");
+  // Vote: mặc định bật, chế độ "vote đi" (không vote = không đi), hạn chót mặc định 2 tiếng trước giờ đá.
+  const voteOn = fd.get("vote") === "on";
+  const start = vnToDate(v.date, v.startTime);
+  const deadlineDate = str(fd, "deadlineDate");
+  const deadlineTime = str(fd, "deadlineTime");
+  const voteDeadline = !voteOn
+    ? null
+    : deadlineDate && deadlineTime
+      ? vnToDate(deadlineDate, deadlineTime)
+      : new Date(start.getTime() - 2 * 3600e3);
+  if (voteDeadline && voteDeadline > start) fail("Hạn vote phải trước giờ đá.");
+  const vote = { voteMode: voteOn ? (str(fd, "voteMode") === "absent" ? "absent" : "going") : null, voteDeadline };
   const newVenue = str(fd, "newVenue");
   if (newVenue) {
     const [venue] = await db.insert(venues).values({ teamId: team.id, name: newVenue, fieldCost: v.costField }).returning();
@@ -43,7 +55,7 @@ async function readMatchForm(db: DB, fd: FormData, team: Team) {
     const [venue] = await db.select().from(venues).where(and(eq(venues.id, v.venueId), eq(venues.teamId, team.id)));
     if (!venue) v.venueId = null;
   }
-  return v;
+  return { ...v, ...vote };
 }
 
 export async function createMatch(_: ActionState, fd: FormData) {
@@ -108,7 +120,7 @@ export async function castVote(_: ActionState, fd: FormData) {
     if (!playerId) fail("Hãy chọn tên của bạn trước khi vote.");
     const choice = str(fd, "choice") === "absent" ? "absent" : "going";
     const reason = optStr(fd, "reason");
-    if (m.status !== "upcoming" || !m.scheduleId) fail("Buổi này không còn nhận vote.");
+    if (m.status !== "upcoming" || !m.voteMode) fail("Buổi này không nhận vote.");
     const [p] = await db
       .select()
       .from(players)
@@ -116,11 +128,15 @@ export async function castVote(_: ActionState, fd: FormData) {
     if (!p) fail("Không tìm thấy cầu thủ.");
     if (!admin) {
       if (m.voteDeadline && m.voteDeadline <= new Date()) fail("Đã quá hạn vote. Nhắn admin nếu cần đổi.");
-      const [inRoster] = await db
-        .select()
-        .from(schedulePlayers)
-        .where(and(eq(schedulePlayers.scheduleId, m.scheduleId), eq(schedulePlayers.playerId, playerId)));
-      if (!inRoster) fail("Bạn không có trong danh sách của lịch này. Nhắn admin để được thêm.");
+      const inRoster = m.scheduleId
+        ? (
+            await db
+              .select()
+              .from(schedulePlayers)
+              .where(and(eq(schedulePlayers.scheduleId, m.scheduleId), eq(schedulePlayers.playerId, playerId)))
+          ).length > 0
+        : p.type === "member" && p.status === "active";
+      if (!inRoster) fail("Bạn không có trong danh sách vote của buổi này. Nhắn admin để được thêm.");
     }
     const row = { choice, reason, updatedAt: new Date(), updatedByAdminId: onBehalf ? admin!.id : null };
     await db

@@ -5,6 +5,7 @@ import { ActionForm } from "@/components/ActionForm";
 import { CopyButton } from "@/components/CopyButton";
 import { Badge, Card, Empty, PageTitle } from "@/components/ui";
 import { getDb, schema } from "@/db";
+import { KIND_LABELS } from "@/lib/labels";
 import { ensureScheduleMatches, getMatchRoster, getPlayers, getVenues, indexById, type Match, type RosterRow } from "@/lib/data";
 import { viewCtx } from "@/lib/team";
 import { pname } from "@/lib/text";
@@ -30,7 +31,7 @@ export default async function VotePage({ params }: { params: Promise<{ slug: str
       and(
         eq(schema.matches.teamId, team.id),
         eq(schema.matches.status, "upcoming"),
-        isNotNull(schema.matches.scheduleId),
+        isNotNull(schema.matches.voteMode),
         gte(schema.matches.date, todayVN()),
       ),
     )
@@ -40,11 +41,14 @@ export default async function VotePage({ params }: { params: Promise<{ slug: str
 
   const groups = new Map<string, { monday: string; schedName: string; deadline: Date | null; mode: string; items: { m: Match; rows: RosterRow[] }[] }>();
   list.forEach((m, i) => {
-    const key = `${m.scheduleId}:${mondayOf(m.date)}`;
+    // Lịch cố định: gom theo tuần. Lịch lẻ: mỗi buổi 1 phiếu.
+    const key = m.scheduleId ? `${m.scheduleId}:${mondayOf(m.date)}` : `m${m.id}`;
     if (!groups.has(key))
       groups.set(key, {
-        monday: mondayOf(m.date),
-        schedName: scheds.get(m.scheduleId!)?.name ?? "Lịch cố định",
+        monday: m.scheduleId ? mondayOf(m.date) : "",
+        schedName: m.scheduleId
+          ? (scheds.get(m.scheduleId)?.name ?? "Lịch cố định")
+          : `${KIND_LABELS[m.kind]}${m.opponent ? ` vs ${m.opponent}` : ""}`,
         deadline: m.voteDeadline,
         mode: m.voteMode ?? "absent",
         items: [],
@@ -65,14 +69,16 @@ export default async function VotePage({ params }: { params: Promise<{ slug: str
       )}
       {groups.size === 0 && (
         <Card>
-          <Empty>Chưa có phiếu vote nào. Admin tạo lịch cố định để có vote hằng tuần.</Empty>
+          <Empty>Chưa có phiếu vote nào.</Empty>
         </Card>
       )}
       {[...groups.values()].map((g) => {
         const open = !!g.deadline && g.deadline > now;
         const modeText = g.mode === "going" ? "Ai ĐI thì vote, không vote = KHÔNG ĐI." : "Ai NGHỈ thì vote, không vote = ĐI.";
         const reminder = [
-          `⚽ Vote ${g.schedName} tuần ${fmtDM(g.monday)}–${fmtDM(addDays(g.monday, 6))}`,
+          g.monday
+            ? `⚽ Vote ${g.schedName} tuần ${fmtDM(g.monday)}–${fmtDM(addDays(g.monday, 6))}`
+            : `⚽ Vote ${g.schedName} ${fmtMatchDate(g.items[0].m.date)}`,
           ...g.items.map(({ m }) => `• ${fmtMatchDate(m.date)} ${m.startTime}${m.venueId ? `, ${vs.get(m.venueId)?.name ?? ""}` : ""}`),
           g.deadline ? `Hạn: ${fmtDateTime(g.deadline)}. ${modeText}` : modeText,
           ...g.items.map(({ m, rows }) => {
@@ -84,11 +90,12 @@ export default async function VotePage({ params }: { params: Promise<{ slug: str
           `Vote tại: ${origin}${base}/vote (đội “${team.name}”, mật khẩu hỏi admin)`,
         ].join("\n");
         return (
-          <section key={`${g.schedName}${g.monday}`} className="space-y-3">
+          <section key={`${g.schedName}${g.monday}${g.items[0].m.id}`} className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h2 className="font-bold">
-                  {g.schedName} · tuần {fmtDM(g.monday)}–{fmtDM(addDays(g.monday, 6))}
+                  {g.schedName}
+                  {g.monday ? ` · tuần ${fmtDM(g.monday)}–${fmtDM(addDays(g.monday, 6))}` : ""}
                 </h2>
                 <p className="text-xs text-gray-600">
                   {g.deadline ? `Hạn chót ${fmtDateTime(g.deadline)} · ` : ""}
@@ -103,7 +110,7 @@ export default async function VotePage({ params }: { params: Promise<{ slug: str
             {g.items.map(({ m, rows }) => {
               const c = voteCounts(rows);
               const mine = me ? rows.find((r) => r.player.id === me.id && r.inRoster) : undefined;
-              const absentRows = rows.filter((r) => r.inRoster && r.going === false);
+              const absentRows = rows.filter((r) => r.inRoster && r.voteChoice === "absent");
               return (
                 <Card key={m.id}>
                   <Link href={`${base}/tran/${m.id}`} className="block">
@@ -138,7 +145,7 @@ export default async function VotePage({ params }: { params: Promise<{ slug: str
                       <b>Chưa vote:</b> {names(c.noVote)}
                     </p>
                   </details>
-                  {me && !mine && <p className="mt-2 text-xs text-gray-500">Bạn không có trong danh sách lịch này.</p>}
+                  {me && !mine && <p className="mt-2 text-xs text-gray-500">Bạn không có trong danh sách vote của buổi này.</p>}
                   {mine && open && (
                     <ActionForm action={castVote} className="mt-3 space-y-2">
                       <input type="hidden" name="matchId" value={m.id} />
@@ -147,14 +154,14 @@ export default async function VotePage({ params }: { params: Promise<{ slug: str
                         <button
                           name="choice"
                           value="going"
-                          className={`btn ${mine.going ? "btn-primary" : ""}`}
+                          className={`btn ${mine.vote?.choice === "going" ? "btn-primary" : ""}`}
                         >
                           ✅ ĐI
                         </button>
                         <button
                           name="choice"
                           value="absent"
-                          className={`btn ${mine.going === false ? "!border-amber-500 !bg-amber-500 !text-white" : ""}`}
+                          className={`btn ${mine.vote?.choice === "absent" ? "!border-amber-500 !bg-amber-500 !text-white" : ""}`}
                         >
                           ❌ NGHỈ
                         </button>

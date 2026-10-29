@@ -43,7 +43,7 @@ export default async function HomePage({ params }: { params: Promise<{ slug: str
     .orderBy(asc(schema.matches.date), asc(schema.matches.startTime))
     .limit(10);
   const next = upcoming[0];
-  const voteMatch = upcoming.find((m) => m.scheduleId && m.voteDeadline && m.voteDeadline > now);
+  const voteMatch = upcoming.find((m) => m.voteMode && m.voteDeadline && m.voteDeadline > now);
   const nextRoster = next ? await getMatchRoster(next, ps) : [];
   const voteRoster = voteMatch ? (voteMatch.id === next?.id ? nextRoster : await getMatchRoster(voteMatch, ps)) : [];
   const nextCount = nextRoster.filter((r) => r.present).length;
@@ -65,7 +65,7 @@ export default async function HomePage({ params }: { params: Promise<{ slug: str
     <>
       {voteMatch && (
         <Card
-          title="🗳️ Vote tuần này"
+          title="🗳️ Vote buổi sắp tới"
           right={<Badge tone="amber">Hạn {fmtDateTime(voteMatch.voteDeadline!)}</Badge>}
           className="border-amber-200 bg-amber-50/60"
         >

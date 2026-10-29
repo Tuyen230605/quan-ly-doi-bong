@@ -182,6 +182,7 @@ export const attendances = pgTable(
     voteChoice: text("vote_choice"),
     result: text("result"),
     fee: integer("fee"),
+    note: text("note"), // admin ghi chú (VD không vote mà đi, không phạt)
   },
   (t) => [primaryKey({ columns: [t.matchId, t.playerId] })],
 );
@@ -237,7 +238,8 @@ export const penaltyTypes = pgTable(
     name: text("name").notNull(),
     amountMode: text("amount_mode").notNull().default("fixed"), // fixed | match_fee
     defaultAmount: integer("default_amount").notNull().default(0),
-    isNoShow: boolean("is_no_show").notNull().default(false),
+    isNoShow: boolean("is_no_show").notNull().default(false), // gợi ý cho "vote đi mà không đến"
+    isNoVoteCame: boolean("is_no_vote_came").notNull().default(false), // gợi ý cho "không vote mà đi"
     enabled: boolean("enabled").notNull().default(true),
   },
   (t) => [uniqueIndex("penalty_types_team_name").on(t.teamId, t.name)],

@@ -1,0 +1,54 @@
+# Kiểm tra tự động mỗi lần push lên main hoặc mở Pull Request.
+# Deploy (CD) do Vercel lo: push main → bản chính thức; nhánh khác / PR → bản xem thử (preview).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Cài thư viện
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test phần tính tiền, vote, VietQR
+        run: npm test
+
+      - name: Build (gồm kiểm tra TypeScript)
+        run: npm run build
+
+      - name: Chạy thử toàn bộ luồng trên Chrome (E2E)
+        env:
+          BASE: http://localhost:3000
+        run: |
+          npm start > server.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null "$BASE/login" && break; sleep 1; done
+          npm run e2e
+
+      - name: Lưu log + ảnh chụp khi lỗi
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-debug
+          path: |
+            server.log
+            e2e-shots/
+          if-no-files-found: ignore

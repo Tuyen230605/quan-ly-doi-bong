@@ -4,11 +4,12 @@ import { FUND_NAMES, fmtMoney, type Fund } from "./money";
 import { compactName, transferContent } from "./text";
 import { bankName, buildVietQR } from "./vietqr";
 
+/** going: sẽ đi (gồm cả chưa vote ở chế độ vote nghỉ); absent: chỉ người đã vote nghỉ; noVote: chưa vote. */
 export function voteCounts(rows: RosterRow[]) {
   const roster = rows.filter((r) => r.inRoster);
   return {
     going: roster.filter((r) => r.going).map((r) => r.player),
-    absent: roster.filter((r) => r.going === false).map((r) => r.player),
+    absent: roster.filter((r) => r.voteChoice === "absent").map((r) => r.player),
     noVote: roster.filter((r) => !r.vote).map((r) => r.player),
     extras: rows.filter((r) => !r.inRoster && r.present).map((r) => r.player),
   };

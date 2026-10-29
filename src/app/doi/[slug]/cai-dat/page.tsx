@@ -28,7 +28,10 @@ function PenaltyTypeForm({ t }: { t?: PenaltyType }) {
       <div className="flex flex-wrap items-center gap-3">
         <input className="input !w-32" name="defaultAmount" inputMode="numeric" defaultValue={money(t?.defaultAmount ?? 0)} placeholder="Mức phạt" />
         <label className="flex items-center gap-1.5 text-sm">
-          <input type="checkbox" name="isNoShow" defaultChecked={t?.isNoShow} className="accent-green-700" /> Dùng cho “vắng không báo”
+          <input type="checkbox" name="isNoShow" defaultChecked={t?.isNoShow} className="accent-green-700" /> Gợi ý cho “vote đi mà không đến”
+        </label>
+        <label className="flex items-center gap-1.5 text-sm">
+          <input type="checkbox" name="isNoVoteCame" defaultChecked={t?.isNoVoteCame} className="accent-green-700" /> Gợi ý cho “không vote mà đi”
         </label>
         <label className="flex items-center gap-1.5 text-sm">
           <input type="checkbox" name="enabled" defaultChecked={t?.enabled ?? true} className="accent-green-700" /> Đang dùng
@@ -173,7 +176,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
 
       <Card title="🚨 Các loại lỗi phạt">
         <p className="muted mb-3">
-          Lỗi “vắng không báo” mặc định phạt <b>bằng tiền trận mỗi người</b> của buổi đó, vào quỹ phạt. Sửa được từng người khi phạt.
+          “Vote đi mà không đến” mặc định phạt <b>bằng tiền trận mỗi người</b> của buổi đó. “Không vote mà đi” chỉ gợi ý, admin tuỳ phạt
+          hoặc ghi chú. Tiền phạt vào quỹ phạt, sửa được từng người khi phạt.
         </p>
         <div className="space-y-4 divide-y divide-gray-100">
           {penaltyTypes.map((t) => (

@@ -27,7 +27,6 @@ import {
   indexById,
   matchTotalCost,
   paidByTx,
-  type RosterRow,
 } from "@/lib/data";
 import { KIND_LABELS } from "@/lib/labels";
 import { fmtMoney, SPLIT_METHODS, type SplitMethod } from "@/lib/money";
@@ -35,12 +34,6 @@ import { viewCtx } from "@/lib/team";
 import { pname } from "@/lib/text";
 import { fmtDateTime, fmtMatchDate, timeLeft } from "@/lib/time";
 import { voteCounts } from "@/lib/views";
-
-function voteLabel(r: RosterRow, mode: string | null) {
-  if (!r.inRoster) return null;
-  if (r.vote) return `Vote ${r.vote.choice === "going" ? "ĐI" : "NGHỈ"}${r.vote.reason ? `: ${r.vote.reason}` : ""}`;
-  return mode === "going" ? "Không vote (coi như không đi)" : "Không vote (coi như đi)";
-}
 
 function MethodSelect() {
   return (
@@ -118,8 +111,8 @@ export default async function MatchPage({ params }: { params: Promise<{ slug: st
   const penalties = matchTxs.filter((t) => t.type === "penalty");
   const alreadyFined = new Set(penalties.filter((t) => t.status === "active").map((t) => t.playerId));
   const suggestions = rows
-    .filter((r) => r.result === "noshow" && !alreadyFined.has(r.player.id))
-    .map((r) => ({ playerId: r.player.id, name: pname(r.player) }));
+    .filter((r) => (r.result === "noshow" || r.result === "novote_came") && !alreadyFined.has(r.player.id))
+    .map((r) => ({ playerId: r.player.id, name: pname(r.player), kind: r.result as "noshow" | "novote_came" }));
   const memberOptions = players.filter((p) => p.type === "member" && p.status !== "left").map((p) => ({ id: p.id, name: pname(p) }));
 
   const PayActions = ({ pid }: { pid: number }) => {
@@ -224,7 +217,7 @@ export default async function MatchPage({ params }: { params: Promise<{ slug: st
         )}
       </Card>
 
-      {m.scheduleId && m.status !== "cancelled" && (
+      {m.voteMode && m.status !== "cancelled" && (
         <Card
           title="🗳️ Vote"
           right={
@@ -246,8 +239,18 @@ export default async function MatchPage({ params }: { params: Promise<{ slug: st
                 <li key={r.player.id} className="flex items-center justify-between gap-2 py-1.5 text-sm">
                   <div className="min-w-0">
                     <span className="font-medium">{pname(r.player)}</span>{" "}
-                    {r.going ? <Badge tone="green">Đi</Badge> : <Badge tone="amber">Nghỉ</Badge>}
-                    {!r.vote && <span className="ml-1 text-xs text-gray-400">(chưa vote)</span>}
+                    {r.vote ? (
+                      r.vote.choice === "going" ? (
+                        <Badge tone="green">Đi</Badge>
+                      ) : (
+                        <Badge tone="amber">Nghỉ</Badge>
+                      )
+                    ) : (
+                      <>
+                        <Badge>Chưa vote</Badge>
+                        <span className="ml-1 text-xs text-gray-400">(coi như {r.going ? "đi" : "không đi"})</span>
+                      </>
+                    )}
                     {r.vote && (
                       <span className="block text-xs text-gray-500">
                         {r.vote.reason ? `${r.vote.reason} · ` : ""}
@@ -277,15 +280,17 @@ export default async function MatchPage({ params }: { params: Promise<{ slug: st
       <div id="diem-danh" />
       {m.status === "upcoming" && admin && (
         <MatchManager
-          key={rows.map((r) => `${r.player.id}:${+r.present}:${r.chargeToPlayerId ?? ""}`).join(",")}
+          key={rows.map((r) => `${r.player.id}:${+r.present}:${r.chargeToPlayerId ?? ""}:${r.voteChoice ?? ""}`).join(",")}
           matchId={id}
+          voteMode={m.voteMode}
           rows={rows.map(
             (r): ManagerRow => ({
               playerId: r.player.id,
               name: pname(r.player),
               isGuest: r.player.type === "guest",
               inRoster: r.inRoster,
-              voteLabel: voteLabel(r, m.voteMode),
+              voteChoice: r.voteChoice,
+              voteReason: r.vote?.reason ?? null,
               present: r.present,
               chargeToPlayerId: r.chargeToPlayerId,
             }),
@@ -330,6 +335,7 @@ export default async function MatchPage({ params }: { params: Promise<{ slug: st
                       <div className="mt-0.5">
                         <ResultBadge result={r.result} />
                       </div>
+                      {r.note && <div className="mt-0.5 text-xs text-gray-600">📝 {r.note}</div>}
                     </div>
                     {r.present && (
                       <div className="shrink-0 text-right">
@@ -441,7 +447,7 @@ export default async function MatchPage({ params }: { params: Promise<{ slug: st
               memberFee={m.memberFee}
             />
           )}
-          {admin && !settled && <p className="muted">Chốt tiền trận trước, rồi web sẽ gợi ý ai vắng không báo để phạt.</p>}
+          {admin && !settled && <p className="muted">Chốt tiền trận trước, rồi web sẽ gợi ý ai vote đi mà không đến, ai không vote mà đi để phạt hoặc ghi chú.</p>}
           {!admin && penalties.length === 0 && <Empty>Không có ai bị phạt.</Empty>}
         </Card>
       )}

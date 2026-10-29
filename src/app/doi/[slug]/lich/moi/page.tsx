@@ -13,7 +13,7 @@ export default async function NewMatchPage({ params }: { params: Promise<{ slug:
   return (
     <>
       <PageTitle>Tạo lịch lẻ</PageTitle>
-      <p className="muted">Buổi đá không theo lịch cố định (giao hữu, đá bù, giải). Không có vote, không xét phạt.</p>
+      <p className="muted">Buổi đá không theo lịch cố định (giao hữu, đá bù, giải). Mặc định có vote: không vote = không đi.</p>
       <Card>
         <ActionForm action={createMatch} className="space-y-4" showOk={false}>
           <MatchFields venues={venues} />

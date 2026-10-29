@@ -62,7 +62,8 @@ export default async function PlayersPage({
                       {p.position ? `${POSITIONS[p.position]} · ` : ""}
                       {s?.attended ?? 0} trận
                       {s?.rate != null ? ` · chuyên cần ${Math.round(s.rate * 100)}%` : ""}
-                      {s?.noshow ? ` · vắng không báo ${s.noshow}` : ""}
+                      {s?.noshow ? ` · vote đi không đến ${s.noshow}` : ""}
+                      {s?.novoteCame ? ` · không vote mà đi ${s.novoteCame}` : ""}
                     </div>
                   </div>
                   <div className="shrink-0 text-right text-sm">

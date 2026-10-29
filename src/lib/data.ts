@@ -1,7 +1,7 @@
 import { and, eq, gte } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import type { Player } from "./auth";
-import type { Result } from "./labels";
+import { resultOf, type Result, type VoteChoice } from "./labels";
 import { allocatePayments, type Fund } from "./money";
 import { pname } from "./text";
 import { addDays, todayVN, weekDeadline, weekdayOf } from "./time";
@@ -16,8 +16,7 @@ export type Venue = typeof venues.$inferSelect;
 export type FundRow = typeof funds.$inferSelect;
 export type PenaltyType = typeof penaltyTypes.$inferSelect;
 export type Vote = typeof votes.$inferSelect;
-export type VoteChoice = "going" | "absent";
-export type { Result };
+export type { Result, VoteChoice };
 
 export function byName(a: Player, b: Player) {
   return pname(a).localeCompare(pname(b), "vi");
@@ -132,20 +131,6 @@ export async function ensureScheduleMatches(teamId: number) {
   }
 }
 
-export function resultOf(o: {
-  isSchedule: boolean;
-  inRoster: boolean;
-  voteMode: string | null;
-  voteChoice: VoteChoice | null;
-  present: boolean;
-}): Result | null {
-  if (!o.isSchedule || !o.inRoster) return o.present ? "extra" : null;
-  const v = o.voteChoice ?? (o.voteMode === "going" ? null : "going");
-  if (v === "going") return o.present ? "ontime" : "noshow";
-  if (v === "absent") return o.present ? "changed" : "excused";
-  return o.present ? "ontime" : "novote";
-}
-
 export type RosterRow = {
   player: Player;
   inRoster: boolean;
@@ -158,10 +143,12 @@ export type RosterRow = {
   feeOverride: number | null;
   fee: number | null;
   result: Result | null;
+  note: string | null;
 };
 
 /**
- * Danh sách người của một buổi: người trong lịch (kèm vote) + người admin thêm vào (khách, ngoài lịch).
+ * Danh sách người của một buổi: người được vote (kèm vote) + người admin thêm vào (khách, ngoài danh sách).
+ * Người được vote: thành viên của lịch cố định; với lịch lẻ có bật vote là mọi thành viên đang đá.
  * Trước khi chốt, ai không bị admin sửa thì "có đá" hay không đi theo vote.
  */
 export async function getMatchRoster(match: Match, playersById: Map<number, Player>): Promise<RosterRow[]> {
@@ -176,16 +163,19 @@ export async function getMatchRoster(match: Match, playersById: Map<number, Play
   ]);
   const attBy = new Map(atts.map((a) => [a.playerId, a]));
   const voteBy = new Map(vts.map((v) => [v.playerId, v]));
+  const hasVote = match.voteMode != null;
+  const activeMember = (id: number) => {
+    const p = playersById.get(id);
+    return !!p && p.type === "member" && p.status === "active";
+  };
   const rosterIds = settled
     ? atts.filter((a) => a.inRoster).map((a) => a.playerId)
-    : roster
-        .map((r) => r.playerId)
-        .filter((id) => {
-          const p = playersById.get(id);
-          return p && p.type === "member" && p.status === "active";
-        });
+    : match.scheduleId
+      ? roster.map((r) => r.playerId).filter(activeMember)
+      : hasVote
+        ? [...playersById.keys()].filter(activeMember)
+        : [];
   const rosterSet = new Set(rosterIds);
-  const isSchedule = match.scheduleId != null;
 
   const rows: RosterRow[] = [];
   for (const id of new Set([...rosterIds, ...atts.map((a) => a.playerId)])) {
@@ -195,11 +185,11 @@ export async function getMatchRoster(match: Match, playersById: Map<number, Play
     const vote = voteBy.get(id) ?? null;
     const inRoster = rosterSet.has(id);
     const voteChoice = ((settled ? att?.voteChoice : vote?.choice) ?? null) as VoteChoice | null;
-    const going = isSchedule && inRoster ? (voteChoice ? voteChoice === "going" : match.voteMode !== "going") : null;
+    const going = hasVote && inRoster ? (voteChoice ? voteChoice === "going" : match.voteMode !== "going") : null;
     const present = att ? att.present : going === true;
     const result =
       (settled ? (att?.result as Result | null) : null) ??
-      resultOf({ isSchedule, inRoster, voteMode: match.voteMode, voteChoice, present });
+      resultOf({ hasVote, inRoster, voteMode: match.voteMode, voteChoice, present });
     rows.push({
       player,
       inRoster,
@@ -212,6 +202,7 @@ export async function getMatchRoster(match: Match, playersById: Map<number, Play
       feeOverride: att?.feeOverride ?? null,
       fee: att?.fee ?? null,
       result,
+      note: att?.note ?? null,
     });
   }
   return rows.sort((a, b) => Number(b.inRoster) - Number(a.inRoster) || byName(a.player, b.player));

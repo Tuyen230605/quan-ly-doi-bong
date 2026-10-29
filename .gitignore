@@ -42,3 +42,6 @@ next-env.d.ts
 
 # dữ liệu PGlite khi chạy trên máy
 /.data
+
+# ảnh chụp khi test e2e lỗi
+/e2e-shots

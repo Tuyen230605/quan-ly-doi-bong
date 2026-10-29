@@ -45,10 +45,12 @@ export async function savePenaltyType(_: ActionState, fd: FormData) {
       amountMode: str(fd, "amountMode") === "match_fee" ? "match_fee" : "fixed",
       defaultAmount: parseMoney(fd.get("defaultAmount")),
       isNoShow: fd.get("isNoShow") === "on",
+      isNoVoteCame: fd.get("isNoVoteCame") === "on",
       enabled: fd.get("enabled") === "on",
     };
     if (!v.name) fail("Nhập tên lỗi.");
     if (v.isNoShow) await db.update(penaltyTypes).set({ isNoShow: false }).where(eq(penaltyTypes.teamId, team.id));
+    if (v.isNoVoteCame) await db.update(penaltyTypes).set({ isNoVoteCame: false }).where(eq(penaltyTypes.teamId, team.id));
     if (id)
       await db
         .update(penaltyTypes)

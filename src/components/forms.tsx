@@ -2,7 +2,7 @@ import type { Player } from "@/lib/auth";
 import type { Match, Schedule, Venue } from "@/lib/data";
 import { KIND_LABELS, POSITIONS } from "@/lib/labels";
 import { pname } from "@/lib/text";
-import { WEEKDAYS, WEEKDAY_NAMES, todayVN } from "@/lib/time";
+import { WEEKDAYS, WEEKDAY_NAMES, todayVN, vnParts } from "@/lib/time";
 import { Field } from "./ui";
 
 function money(v: number | undefined | null) {
@@ -85,7 +85,47 @@ export function MatchFields({ m, venues }: { m?: Match; venues: Venue[] }) {
       <Field label="Ghi chú">
         <input className="input" name="note" defaultValue={m?.note ?? ""} placeholder="VD: mặc áo trắng" />
       </Field>
+      <MatchVoteFields m={m} />
     </div>
+  );
+}
+
+function MatchVoteFields({ m }: { m?: Match }) {
+  const deadline = m?.voteDeadline ? vnParts(m.voteDeadline) : null;
+  return (
+    <fieldset className="rounded-xl border border-gray-200 p-3">
+      <legend className="px-1 text-sm font-semibold text-gray-700">Vote</legend>
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="vote" defaultChecked={m ? m.voteMode != null : true} className="size-4 accent-green-700" />
+        Cho thành viên vote đi / nghỉ
+      </label>
+      <div className="mt-2 space-y-1.5">
+        <label className="flex items-start gap-2 text-sm">
+          <input type="radio" name="voteMode" value="going" defaultChecked={(m?.voteMode ?? "going") === "going"} className="mt-1 accent-green-700" />
+          <span>
+            <b>Vote đi</b>: không vote = không đi
+          </span>
+        </label>
+        <label className="flex items-start gap-2 text-sm">
+          <input type="radio" name="voteMode" value="absent" defaultChecked={m?.voteMode === "absent"} className="mt-1 accent-green-700" />
+          <span>
+            <b>Vote nghỉ</b>: không vote = đi
+          </span>
+        </label>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <Field label="Hạn vote: ngày">
+          <input className="input" type="date" name="deadlineDate" defaultValue={deadline?.date ?? ""} />
+        </Field>
+        <Field label="Giờ">
+          <input className="input" type="time" name="deadlineTime" defaultValue={deadline?.time ?? ""} />
+        </Field>
+      </div>
+      <p className="mt-2 text-xs text-gray-500">
+        Để trống hạn vote = khoá trước giờ đá 2 tiếng. Sau trận: vote đi mà không đến → gợi ý phạt; không vote mà đi → admin tuỳ ghi chú
+        hoặc phạt.
+      </p>
+    </fieldset>
   );
 }
 
