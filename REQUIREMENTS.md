@@ -38,7 +38,7 @@ Quy mô: **một web cho nhiều đội**. Mỗi đội khoảng 15–40 cầu t
 | Trang chủ có ô quỹ cá nhân, chọn tên là biết mình còn bao nhiêu; bỏ “Đang nợ nhiều nhất” | [Bản 0.6](#thay-đổi-bản-06) |
 | Bảng từng thành viên thành tab riêng, số dư hiện tại + số buổi đi lên trước | [Bản 0.6](#thay-đổi-bản-06) |
 | Chốt trận = trừ tiền mỗi người tham gia; ai phạt thì trừ riêng | [Bản 0.6](#thay-đổi-bản-06) |
-| Link nộp tiền: bấm là vào app ngân hàng, điền sẵn số tiền, nội dung là tên người nộp | [Bản 0.6](#thay-đổi-bản-06) |
+| Link nộp tiền: bấm nộp là hiện mã QR có sẵn số tiền, nội dung là tên người nộp | [Bản 0.6](#thay-đổi-bản-06) |
 | Admin tự viết quy định đội ở cuối trang chủ | [Bản 0.6](#thay-đổi-bản-06) |
 | Cuối trận tích nhanh người bị phạt (đi muộn, vote không đi…), admin tự ghi giá, có ghi chú | [Bản 0.6](#thay-đổi-bản-06) |
 
@@ -51,8 +51,9 @@ Quy mô: **một web cho nhiều đội**. Mỗi đội khoảng 15–40 cầu t
 3. **Chốt trận = trừ quỹ cá nhân**: tiền trận của mỗi người trừ vào quỹ cá nhân (khách có người dẫn thì trừ của người dẫn). Danh sách sau trận hiện “quỹ còn …” của từng người. Ai quỹ đủ thì tự tính là đã trả; quỹ âm thì vẫn bấm “Đã trả” khi người đó nộp bù.
    **Phạt trừ riêng**: mỗi khoản phạt trừ thẳng vào quỹ cá nhân và tiền chuyển từ quỹ bóng sang quỹ phạt ngay (giao dịch `fine_pay`). Quỹ phạt tăng ngay, người bị phạt không còn khoản “nợ phạt” riêng. Huỷ khoản phạt thì quỹ cá nhân được trả lại.
 4. **Link nộp tiền** (Thao tác nhanh → *Tạo link / QR nộp tiền*): admin nhập nộp gì, số tiền, vào quỹ nào, chữ thêm vào nội dung (VD `T11`). Web tạo link gửi Zalo.
-   - Thành viên mở link → (nhập mật khẩu đội nếu máy chưa vào) → **phải chọn tên trước** → thấy danh sách app ngân hàng. Bấm app của mình là mở app ngân hàng với tài khoản nhận, số tiền và nội dung `<TÊN> <chữ thêm>` điền sẵn. Không có nút tải QR hay copy số TK / nội dung; mã QR chỉ để dự phòng (thu gọn).
-   - Link dùng dịch vụ miễn phí của VietQR: `https://dl.vietqr.io/pay?app=<app>&ba=<STK>@<mã NH>&am=<số tiền>&tn=<nội dung>&bn=<tên TK>&url=<trang quay lại>`. App **MB Bank, VietinBank, BIDV, ACB, OCB** điền sẵn; các app khác (Vietcombank, Techcombank…) hiện chỉ mở app lên, người chuyển nhập theo thông tin trên trang.
+   - Thành viên mở link (hoặc bấm **Nộp** ở trang chủ) → (nhập mật khẩu đội nếu máy chưa vào) → **phải chọn tên trước** → hiện ngay **mã QR** có sẵn tài khoản nhận, số tiền và nội dung `<TÊN> <chữ thêm>`, kèm hướng dẫn quét (đang dùng chính điện thoại đó thì chụp màn hình rồi quét từ thư viện ảnh). Không có nút tải QR hay copy số TK / nội dung.
+   - Không dùng link mở thẳng app ngân hàng (`dl.vietqr.io`): thử thực tế trên điện thoại không mở được app.
+   - Ảnh QR tạo sẵn trên server, nên máy cũ không chạy được JavaScript của web vẫn thấy mã.
    - Admin thấy danh sách ai đã nộp, bấm **Đã nhận** khi tiền về → ghi khoản nộp, cộng vào quỹ cá nhân. Đóng link khi thu xong.
 5. **Quy định của đội** ở cuối trang chủ: admin tự viết (lần đầu có mẫu lấy từ các mức phạt đang dùng), mọi thành viên xem được.
 6. **Phạt cuối trận – tích nhanh**: trong mục Phạt của buổi đã chốt, chọn lỗi (hoặc *Lỗi khác* tự ghi tên lỗi), admin tự ghi mức phạt, tích nhiều người (người có đá buổi đó lên đầu), thêm ghi chú → vào danh sách phạt, sửa được từng dòng trước khi xác nhận. Khoản phạt hiện ngay dưới tên người đó trong danh sách “Ai đá & tiền trận”.

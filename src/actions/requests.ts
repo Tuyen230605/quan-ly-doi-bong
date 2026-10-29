@@ -21,7 +21,7 @@ async function loadRequest(db: DB, id: number, teamId: number): Promise<PaymentR
   return r;
 }
 
-/** Admin tạo link nộp tiền (VD quỹ tháng 11, 200k). Thành viên mở link, chọn app ngân hàng để chuyển. */
+/** Admin tạo link nộp tiền (VD quỹ tháng 11, 200k). Thành viên mở link, chọn tên là hiện mã QR có sẵn số tiền + nội dung. */
 export async function createPaymentRequest(_: ActionState, fd: FormData) {
   return run(async () => {
     const { user, team } = await teamAdmin(fd);

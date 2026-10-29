@@ -7,7 +7,7 @@ import { pname } from "@/lib/text";
 
 const LINKS = [
   { path: "/tong-ket?tab=tv", icon: "📋", label: "Bảng thành viên", desc: "Quỹ cá nhân, số buổi đi, chuyên cần, phạt" },
-  { path: "/nop", icon: "💳", label: "Nộp tiền", desc: "Link mở app ngân hàng, điền sẵn số tiền" },
+  { path: "/nop", icon: "💳", label: "Nộp tiền", desc: "Link hiện mã QR có sẵn số tiền, tên người nộp" },
   { path: "/cau-thu", icon: "👥", label: "Cầu thủ", desc: "Quỹ cá nhân, số trận từng người" },
   { path: "/cong-no", icon: "📌", label: "Công nợ", desc: "Ai đang nợ quỹ bóng, quỹ phạt" },
   { path: "/tong-ket", icon: "📊", label: "Tổng kết tháng", desc: "Ai đi bao nhiêu, nghỉ, đóng tiền, bị phạt" },

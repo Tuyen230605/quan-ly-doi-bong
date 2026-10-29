@@ -3,7 +3,7 @@ import Link from "next/link";
 import { saveRules } from "@/actions/teams";
 import { getDb, schema } from "@/db";
 import { ActionForm } from "@/components/ActionForm";
-import { QrCard } from "@/components/QrCard";
+import { Qr } from "@/components/Qr";
 import { Badge, Card, Empty, Fold, Money, Stat } from "@/components/ui";
 import {
   ensureScheduleMatches,
@@ -197,7 +197,7 @@ export default async function HomePage({ params }: { params: Promise<{ slug: str
             )
               .filter(([, q]) => q.configured)
               .map(([title, q]) => (
-                <QrCard
+                <Qr
                   key={title}
                   title={title}
                   payload={q.payload}

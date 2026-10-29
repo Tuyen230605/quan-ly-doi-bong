@@ -3,7 +3,7 @@ import Link from "next/link";
 import { addDeposit, addExpense, addIncome, adjust, transferFunds } from "@/actions/money";
 import { ActionForm } from "@/components/ActionForm";
 import { PenaltyForm } from "@/components/PenaltyForm";
-import { QrCard } from "@/components/QrCard";
+import { Qr } from "@/components/Qr";
 import { TxList } from "@/components/TxList";
 import { Card, Field, Fold, Money, PageTitle, Stat, Tabs } from "@/components/ui";
 import { getDb, schema } from "@/db";
@@ -106,7 +106,7 @@ export default async function FundPage({
 
       {qr.configured ? (
         <Card title="QR chuyển tiền">
-          <QrCard
+          <Qr
             title={FUND_NAMES[f]}
             payload={qr.payload}
             image={qr.image}

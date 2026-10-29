@@ -1,43 +1,42 @@
 // Mã QR chuyển khoản theo chuẩn VietQR (EMVCo, NAPAS 247). Mọi app ngân hàng VN đều quét được.
 
-// code: mã ngắn của ngân hàng theo VietQR (api.vietqr.io/v2/banks), dùng trong link mở app ngân hàng.
-export const BANKS: { bin: string; code: string; name: string }[] = [
-  { bin: "970436", code: "vcb", name: "Vietcombank" },
-  { bin: "970415", code: "icb", name: "VietinBank" },
-  { bin: "970418", code: "bidv", name: "BIDV" },
-  { bin: "970405", code: "vba", name: "Agribank" },
-  { bin: "970407", code: "tcb", name: "Techcombank" },
-  { bin: "970422", code: "mb", name: "MB Bank" },
-  { bin: "970416", code: "acb", name: "ACB" },
-  { bin: "970432", code: "vpb", name: "VPBank" },
-  { bin: "970423", code: "tpb", name: "TPBank" },
-  { bin: "970403", code: "stb", name: "Sacombank" },
-  { bin: "970437", code: "hdb", name: "HDBank" },
-  { bin: "970441", code: "vib", name: "VIB" },
-  { bin: "970443", code: "shb", name: "SHB" },
-  { bin: "970431", code: "eib", name: "Eximbank" },
-  { bin: "970426", code: "msb", name: "MSB" },
-  { bin: "970448", code: "ocb", name: "OCB" },
-  { bin: "970440", code: "seab", name: "SeABank" },
-  { bin: "970449", code: "lpb", name: "LPBank" },
-  { bin: "970428", code: "nab", name: "Nam A Bank" },
-  { bin: "970409", code: "bab", name: "Bac A Bank" },
-  { bin: "970425", code: "abb", name: "ABBANK" },
-  { bin: "970454", code: "vccb", name: "BVBank (Bản Việt)" },
-  { bin: "970412", code: "pvcb", name: "PVcomBank" },
-  { bin: "970452", code: "klb", name: "KienlongBank" },
-  { bin: "970419", code: "ncb", name: "NCB" },
-  { bin: "970400", code: "sgicb", name: "Saigonbank" },
-  { bin: "970429", code: "scb", name: "SCB" },
-  { bin: "970430", code: "pgb", name: "PG Bank" },
-  { bin: "970427", code: "vab", name: "VietABank" },
-  { bin: "970438", code: "bvb", name: "BaoViet Bank" },
-  { bin: "970433", code: "vietbank", name: "VietBank" },
-  { bin: "970424", code: "shbvn", name: "Shinhan Bank" },
-  { bin: "970457", code: "wvn", name: "Woori Bank" },
-  { bin: "546034", code: "cake", name: "Cake by VPBank" },
-  { bin: "546035", code: "ubank", name: "Ubank by VPBank" },
-  { bin: "963388", code: "timo", name: "Timo" },
+export const BANKS: { bin: string; name: string }[] = [
+  { bin: "970436", name: "Vietcombank" },
+  { bin: "970415", name: "VietinBank" },
+  { bin: "970418", name: "BIDV" },
+  { bin: "970405", name: "Agribank" },
+  { bin: "970407", name: "Techcombank" },
+  { bin: "970422", name: "MB Bank" },
+  { bin: "970416", name: "ACB" },
+  { bin: "970432", name: "VPBank" },
+  { bin: "970423", name: "TPBank" },
+  { bin: "970403", name: "Sacombank" },
+  { bin: "970437", name: "HDBank" },
+  { bin: "970441", name: "VIB" },
+  { bin: "970443", name: "SHB" },
+  { bin: "970431", name: "Eximbank" },
+  { bin: "970426", name: "MSB" },
+  { bin: "970448", name: "OCB" },
+  { bin: "970440", name: "SeABank" },
+  { bin: "970449", name: "LPBank" },
+  { bin: "970428", name: "Nam A Bank" },
+  { bin: "970409", name: "Bac A Bank" },
+  { bin: "970425", name: "ABBANK" },
+  { bin: "970454", name: "BVBank (Bản Việt)" },
+  { bin: "970412", name: "PVcomBank" },
+  { bin: "970452", name: "KienlongBank" },
+  { bin: "970419", name: "NCB" },
+  { bin: "970400", name: "Saigonbank" },
+  { bin: "970429", name: "SCB" },
+  { bin: "970430", name: "PG Bank" },
+  { bin: "970427", name: "VietABank" },
+  { bin: "970438", name: "BaoViet Bank" },
+  { bin: "970433", name: "VietBank" },
+  { bin: "970424", name: "Shinhan Bank" },
+  { bin: "970457", name: "Woori Bank" },
+  { bin: "546034", name: "Cake by VPBank" },
+  { bin: "546035", name: "Ubank by VPBank" },
+  { bin: "963388", name: "Timo" },
 ];
 
 export function bankName(bin: string | null | undefined) {
@@ -103,55 +102,3 @@ export function parseVietQR(payload: string): { bin: string; accountNo: string; 
   return { bin, accountNo, name: top.get("59") ?? null };
 }
 
-/**
- * App ngân hàng mở được bằng link của VietQR (dl.vietqr.io). autofill: app tự điền sẵn
- * số tài khoản + số tiền + nội dung; app khác chỉ mở lên, người chuyển tự nhập hoặc quét QR.
- * Danh sách: api.vietqr.io/v2/android-app-deeplinks và ios-app-deeplinks.
- */
-export const BANK_APPS: { id: string; name: string; autofill?: boolean }[] = [
-  { id: "mb", name: "MB Bank", autofill: true },
-  { id: "icb", name: "VietinBank", autofill: true },
-  { id: "bidv", name: "BIDV", autofill: true },
-  { id: "acb", name: "ACB ONE", autofill: true },
-  { id: "ocb", name: "OCB OMNI", autofill: true },
-  { id: "vcb", name: "Vietcombank" },
-  { id: "tcb", name: "Techcombank" },
-  { id: "vba", name: "Agribank" },
-  { id: "vpb", name: "VPBank NEO" },
-  { id: "tpb", name: "TPBank" },
-  { id: "cake", name: "Cake" },
-  { id: "timo", name: "Timo" },
-  { id: "lpb", name: "LPBank" },
-  { id: "hdb", name: "HDBank" },
-  { id: "vib-2", name: "MyVIB" },
-  { id: "shb", name: "SHB SAHA" },
-  { id: "seab", name: "SeABank" },
-  { id: "eib", name: "Eximbank" },
-  { id: "shbvn", name: "Shinhan SOL" },
-  { id: "abb", name: "ABBank" },
-  { id: "scb", name: "SCB" },
-  { id: "pvcb", name: "PVcomBank" },
-  { id: "klb", name: "KienlongBank" },
-  { id: "ncb", name: "NCB" },
-  { id: "nab", name: "Nam A Bank" },
-  { id: "bvb", name: "BAOVIET Bank" },
-  { id: "vab", name: "VietABank" },
-];
-
-export const bankAppIcon = (id: string) => `https://cdn.vietqr.io/bank-app-icon/${id}-android.webp`;
-
-/**
- * Link mở thẳng app ngân hàng của người chuyển, điền sẵn tài khoản nhận, số tiền, nội dung.
- * returnUrl: trang quay lại sau khi chuyển. Ngân hàng nhận không có mã VietQR thì trả null.
- */
-export function bankAppLink(
-  app: string,
-  o: { bin: string; accountNo: string; amount: number; content: string; accountName?: string | null; returnUrl: string },
-) {
-  const code = BANKS.find((b) => b.bin === o.bin)?.code;
-  if (!code) return null;
-  const q = new URLSearchParams({ app, am: String(Math.round(o.amount)), tn: o.content });
-  if (o.accountName) q.set("bn", o.accountName);
-  q.set("url", o.returnUrl);
-  return `https://dl.vietqr.io/pay?${q}&ba=${encodeURIComponent(o.accountNo.replace(/\s/g, ""))}@${code}`;
-}

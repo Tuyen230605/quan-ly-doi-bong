@@ -12,7 +12,8 @@ Web cho các đội bóng phủi, dùng chủ yếu trên điện thoại. **M�
 - **Tích ai đã trả**, tiền nộp trước tự gạch các trận nợ cũ nhất.
 - **2 quỹ riêng**: quỹ bóng và quỹ phạt. Mỗi quỹ có sổ thu chi, thu khác (tự nhập nguồn), chi, chuyển quỹ.
 - **QR chuyển khoản**: admin tải ảnh QR từ app ngân hàng, web tự đọc số tài khoản để tạo QR có sẵn số tiền + nội dung.
-- **Link nộp tiền**: admin tạo link (VD quỹ tháng 11, 200k) gửi Zalo. Thành viên bấm link, chọn tên, chọn app ngân hàng → app mở ra điền sẵn số tiền, nội dung là tên người nộp (qua dịch vụ miễn phí `dl.vietqr.io`). Admin bấm *Đã nhận* khi tiền về.
+- **Link nộp tiền**: admin tạo link (VD quỹ tháng 11, 200k) gửi Zalo. Thành viên bấm link, chọn tên là hiện ngay mã QR có sẵn số tiền, nội dung là tên người nộp; quét bằng app ngân hàng. Admin bấm *Đã nhận* khi tiền về.
+- **Máy cũ** (dưới iOS 16.4 / Chrome 111, không chạy được JavaScript của web): vẫn vào đội, chọn tên, vote, thấy mã QR (ảnh QR tạo sẵn trên server).
 - **Quy định của đội** ở cuối trang chủ, admin tự viết.
 - **Thông số từng thành viên** (tab *Từng thành viên* trong Tổng kết: quỹ cá nhân, số buổi đi lên đầu), **tổng kết tháng** (đi, nghỉ, vote đi mà không đến, không vote mà đi, đã đóng, bị phạt), xếp hạng, copy gửi Zalo, xuất Excel.
 - **Lịch sử** giao dịch và nhật ký thao tác (ai làm gì, lúc nào).

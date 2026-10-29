@@ -31,8 +31,8 @@ export default async function PayRequestsPage({ params }: { params: Promise<{ sl
       {admin && (
         <Card title="Tạo link nộp tiền">
           <p className="muted mb-3">
-            Gửi link vào nhóm Zalo. Thành viên bấm link, chọn tên mình, chọn app ngân hàng là chuyển được luôn: số tiền điền sẵn, nội
-            dung là tên người nộp.
+            Gửi link vào nhóm Zalo. Thành viên bấm link, chọn tên mình là hiện mã QR có sẵn số tiền, nội dung là tên người nộp. Quét
+            bằng app ngân hàng để chuyển.
           </p>
           <ActionForm action={createPaymentRequest} className="space-y-3">
             <Field label="Nộp tiền gì">
@@ -54,8 +54,8 @@ export default async function PayRequestsPage({ params }: { params: Promise<{ sl
             </Field>
             {noAccount.length > 0 && (
               <p className="text-xs text-amber-700">
-                Chưa có số tài khoản cho {noAccount.map((f) => FUND_NAMES[f].toLowerCase()).join(", ")}: link sẽ không mở được app ngân
-                hàng.{" "}
+                Chưa có số tài khoản cho {noAccount.map((f) => FUND_NAMES[f].toLowerCase()).join(", ")}: mã QR sẽ không có sẵn số tiền,
+                nội dung.{" "}
                 <Link href={`${base}/cai-dat#tai-khoan`} className="underline">
                   Cài đặt
                 </Link>

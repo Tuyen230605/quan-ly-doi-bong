@@ -3,22 +3,21 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { markRequestPaid, setPaymentRequestStatus, unmarkRequestPaid } from "@/actions/requests";
 import { ActionForm } from "@/components/ActionForm";
-import { BankApps, type BankAppLink } from "@/components/BankApps";
 import { ChooseMe } from "@/components/ChooseMe";
 import { CopyButton } from "@/components/CopyButton";
-import { QrCard } from "@/components/QrCard";
-import { Badge, Card, Fold, Money, PageTitle } from "@/components/ui";
+import { Qr } from "@/components/Qr";
+import { Badge, Card, Money, PageTitle } from "@/components/ui";
 import { getDb, schema } from "@/db";
 import { getActiveTx, getFunds, getPlayers, personal, playerBalances } from "@/lib/data";
 import { FUND_NAMES, fmtMoney, type Fund } from "@/lib/money";
 import { viewCtx } from "@/lib/team";
 import { pname } from "@/lib/text";
-import { BANK_APPS, bankAppIcon, bankAppLink, bankName } from "@/lib/vietqr";
+import { bankName } from "@/lib/vietqr";
 import { fundQr, requestContent, siteOrigin } from "@/lib/views";
 
 /**
  * Trang nộp tiền theo link admin gửi. Thành viên phải chọn tên trước (nội dung chuyển khoản là tên họ),
- * rồi bấm app ngân hàng của mình: app mở ra với số tiền + nội dung điền sẵn.
+ * rồi thấy ngay mã QR có sẵn số tiền + nội dung để quét bằng app ngân hàng.
  */
 export default async function PayRequestPage({ params }: { params: Promise<{ slug: string; id: string }> }) {
   const ctx = await viewCtx(params);
@@ -40,23 +39,10 @@ export default async function PayRequestPage({ params }: { params: Promise<{ slu
   const open = r.status === "open";
 
   const content = me ? requestContent(r.note, pname(me)) : "";
-  const links: BankAppLink[] = [];
-  if (me && fund.bankBin && fund.accountNo)
-    for (const app of BANK_APPS) {
-      const href = bankAppLink(app.id, {
-        bin: fund.bankBin,
-        accountNo: fund.accountNo,
-        amount: r.amount,
-        content,
-        accountName: fund.accountName,
-        returnUrl: `${origin}${path}`,
-      });
-      if (href) links.push({ id: app.id, name: app.name, icon: bankAppIcon(app.id), autofill: !!app.autofill, href });
-    }
   const qr = me ? fundQr(fund, { amount: r.amount, content }) : null;
   const share = [
     `💳 ${team.name}: ${r.title} – ${fmtMoney(r.amount)}/người`,
-    `Bấm link, chọn tên mình rồi chọn app ngân hàng là chuyển được luôn (điền sẵn số tiền, nội dung là tên bạn):`,
+    `Bấm link, chọn tên mình là hiện mã QR có sẵn số tiền, nội dung là tên bạn. Quét bằng app ngân hàng để chuyển:`,
     `${origin}${path}`,
   ].join("\n");
 
@@ -92,7 +78,14 @@ export default async function PayRequestPage({ params }: { params: Promise<{ slu
         </Card>
       ) : (
         <Card title={`Nộp cho ${pname(me)}`}>
-          <dl className="mb-3 grid grid-cols-[6.5rem_1fr] gap-x-2 gap-y-1 rounded-xl bg-gray-50 p-3 text-sm">
+          {qr?.configured ? (
+            <Qr title={r.title} payload={qr.payload} image={qr.image} lines={qr.lines} fileName={`nop-${r.id}`} actions={false} caption={false} />
+          ) : (
+            <p className="text-sm text-amber-700">Admin chưa cài tài khoản nhận tiền cho quỹ này. Nhắn admin.</p>
+          )}
+          <dl className="mt-3 grid grid-cols-[6.5rem_1fr] gap-x-2 gap-y-1 rounded-xl bg-gray-50 p-3 text-sm">
+            <dt className="text-gray-500">Số tiền</dt>
+            <dd className="font-semibold tabular-nums">{fmtMoney(r.amount)}</dd>
             <dt className="text-gray-500">Nội dung</dt>
             <dd className="font-mono font-semibold" data-content>
               {content}
@@ -107,25 +100,19 @@ export default async function PayRequestPage({ params }: { params: Promise<{ slu
               </>
             )}
           </dl>
-          {links.length > 0 ? (
-            <>
-              <p className="label">Bấm vào app ngân hàng bạn dùng:</p>
-              <BankApps links={links} />
-              <p className="mt-2 text-xs text-gray-500">
-                ⚡ <b>Điền sẵn</b>: app mở ra có sẵn số tiền + nội dung, chỉ cần xác nhận. App “chỉ mở app”: nhập theo thông tin ở trên, hoặc
-                quét mã QR bên dưới. Chuyển xong, thủ quỹ sẽ xác nhận khi tiền về.
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-amber-700">Admin chưa nhập số tài khoản nhận tiền nên chưa mở thẳng app ngân hàng được. Quét mã QR bên dưới.</p>
+          {qr && !qr.payload && qr.image && (
+            <p className="mt-2 text-sm text-amber-700">Mã này chưa có sẵn số tiền: nhập số tiền và nội dung như trên khi chuyển.</p>
           )}
-          {qr?.configured && (
-            <div className="mt-3">
-              <Fold summary="Không mở được app? Quét mã QR" open={links.length === 0}>
-                <QrCard title={r.title} payload={qr.payload} image={qr.image} lines={qr.lines} fileName={`nop-${r.id}`} size="sm" actions={false} />
-              </Fold>
-            </div>
-          )}
+          <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-gray-700">
+            <li>
+              Mở app ngân hàng → <b>Quét QR</b> → quét mã trên.
+            </li>
+            <li>
+              Đang xem bằng chính điện thoại này: <b>chụp màn hình</b> (hoặc nhấn giữ ảnh mã → Lưu ảnh), rồi trong app ngân hàng bấm Quét QR →
+              chọn ảnh từ thư viện.
+            </li>
+            <li>Kiểm tra đúng số tiền, nội dung rồi chuyển. Thủ quỹ xác nhận khi tiền về.</li>
+          </ol>
           <p className="mt-3 text-center text-xs text-gray-500">
             Không phải {pname(me)}?{" "}
             <Link href={`${base}/toi?next=${encodeURIComponent(path)}`} className="underline">

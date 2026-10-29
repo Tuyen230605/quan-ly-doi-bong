@@ -4,7 +4,7 @@ import { addTeamAdmin, changeTeamPassword, removeTeamAdmin, saveTeamSettings } f
 import { ActionForm } from "@/components/ActionForm";
 import { BankQrFields } from "@/components/BankQrFields";
 import { CopyButton } from "@/components/CopyButton";
-import { QrCard } from "@/components/QrCard";
+import { Qr } from "@/components/Qr";
 import { Card, Field, Fold, PageTitle } from "@/components/ui";
 import { getDb, schema } from "@/db";
 import { getFunds, getPenaltyTypes, getVenues, type PenaltyType, type Venue } from "@/lib/data";
@@ -165,7 +165,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
                 {qr.configured && (
                   <div className="mt-4">
                     <p className="label text-center">Xem thử (quét bằng app ngân hàng để kiểm tra)</p>
-                    <QrCard title={FUND_NAMES[code]} payload={qr.payload} image={qr.image} lines={qr.lines} fileName={`qr-${code}`} size="sm" />
+                    <Qr title={FUND_NAMES[code]} payload={qr.payload} image={qr.image} lines={qr.lines} fileName={`qr-${code}`} size="sm" />
                   </div>
                 )}
               </Fold>
