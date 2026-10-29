@@ -1,41 +1,19 @@
 import Link from "next/link";
 import { CopyButton } from "@/components/CopyButton";
-import { Card, Empty, Money, PageTitle, Stat, Tabs } from "@/components/ui";
-import type { Player } from "@/lib/auth";
-import { getActiveTx, getPlayers, matchTotalCost, personal, playerBalances } from "@/lib/data";
+import { MemberTable, memberRows, memberSort, sortMemberRows, type MemberRow, type MemberSort } from "@/components/MemberTable";
+import { Card, PageTitle, Stat, Tabs } from "@/components/ui";
+import { getActiveTx, getPlayers, matchTotalCost } from "@/lib/data";
 import { fmtK, fmtMoney } from "@/lib/money";
-import { balancesAt, emptyStats, fundSummary, getSettledAttendance, inRange, playerStats, type PlayerStats } from "@/lib/summary";
+import { balancesAt, fundSummary, getSettledAttendance, inRange, playerStats } from "@/lib/summary";
 import { viewCtx } from "@/lib/team";
 import { pname } from "@/lib/text";
 import { addMonths, fmtMonth, monthRange, todayVN } from "@/lib/time";
 
-// ball/penalty: số dư cuối kỳ (cho xếp hạng); now: quỹ cá nhân hiện tại.
-type Row = { p: Player; s: PlayerStats; ball: number; penalty: number; now: number };
+// ball/penalty: số dư cuối kỳ (cho xếp hạng "đang nợ"); now: quỹ cá nhân hiện tại.
+type Row = MemberRow & { ball: number; penalty: number };
 
-const SORTS = {
-  fund: "Quỹ cá nhân",
-  attended: "Đi nhiều",
-  rate: "Chuyên cần",
-  noshow: "Vắng không báo",
-  fined: "Bị phạt",
-  paid: "Đã đóng",
-  name: "Tên",
-} as const;
-
-type SortKey = keyof typeof SORTS | "debt";
-
-function sortRows(rows: Row[], key: SortKey) {
-  const by: Record<SortKey, (a: Row, b: Row) => number> = {
-    fund: (a, b) => a.now - b.now,
-    attended: (a, b) => b.s.attended - a.s.attended || (b.s.rate ?? -1) - (a.s.rate ?? -1),
-    rate: (a, b) => (b.s.rate ?? -1) - (a.s.rate ?? -1) || a.s.noshow - b.s.noshow || b.s.attended - a.s.attended,
-    noshow: (a, b) => b.s.noshow - a.s.noshow,
-    paid: (a, b) => b.s.paidBall - a.s.paidBall,
-    fined: (a, b) => b.s.fined - a.s.fined,
-    debt: (a, b) => a.ball + a.penalty - (b.ball + b.penalty),
-    name: (a, b) => pname(a.p).localeCompare(pname(b.p), "vi"),
-  };
-  return [...rows].sort(by[key]);
+function sortRows(rows: Row[], key: MemberSort | "debt") {
+  return key === "debt" ? [...rows].sort((a, b) => a.ball + a.penalty - (b.ball + b.penalty)) : sortMemberRows(rows, key);
 }
 
 export default async function SummaryPage({
@@ -53,7 +31,7 @@ export default async function SummaryPage({
   const year = /^\d{4}$/.test(sp.y ?? "") ? sp.y : undefined;
   const { from, to } = year ? { from: `${year}-01-01`, to: `${year}-12-31` } : monthRange(ym);
   const label = year ? `năm ${year}` : `tháng ${fmtMonth(ym)}`;
-  const sort = (sp.sort && sp.sort in SORTS ? sp.sort : "fund") as keyof typeof SORTS;
+  const sort = memberSort(sp.sort);
   const tab = sp.tab === "tv" ? "tv" : "chung";
   const q = year ? `y=${year}` : `m=${ym}`;
 
@@ -64,16 +42,11 @@ export default async function SummaryPage({
   ]);
   const stats = playerStats(atts, matches, txs, from, to);
   const bal = balancesAt(txs, to);
-  const balNow = playerBalances(txs);
-  const rows: Row[] = players
-    .filter((p) => stats.has(p.id) || (p.type === "member" && p.status === "active"))
-    .map((p) => ({
-      p,
-      s: stats.get(p.id) ?? emptyStats(),
-      ball: bal.get(p.id)?.ball ?? 0,
-      penalty: bal.get(p.id)?.penalty ?? 0,
-      now: personal(balNow.get(p.id)),
-    }));
+  const rows: Row[] = memberRows(players, stats, txs).map((r) => ({
+    ...r,
+    ball: bal.get(r.p.id)?.ball ?? 0,
+    penalty: bal.get(r.p.id)?.penalty ?? 0,
+  }));
 
   const top = (list: Row[], fmt: (r: Row) => string, n = 3) => list.slice(0, n).map(fmt).join(", ") || "—";
   const members = rows.filter((r) => r.p.type === "member");
@@ -137,7 +110,14 @@ export default async function SummaryPage({
       />
 
       {tab === "tv" ? (
-        <MemberTable rows={sortRows(rows, sort)} sort={sort} base={base} q={q} label={label} />
+        <MemberTable
+          rows={sortRows(rows, sort)}
+          sort={sort}
+          sortHref={(k) => `${base}/tong-ket?${q}&tab=tv&sort=${k}`}
+          base={base}
+          label={label}
+          meId={ctx.me?.id}
+        />
       ) : (
         <>
           <Card title="Xếp hạng">
@@ -217,92 +197,3 @@ export default async function SummaryPage({
   );
 }
 
-/** Bảng từng thành viên: quỹ cá nhân hiện tại + số buổi đi lên trước, cột tên dính bên trái khi kéo ngang. */
-function MemberTable({
-  rows,
-  sort,
-  base,
-  q,
-  label,
-}: {
-  rows: Row[];
-  sort: keyof typeof SORTS;
-  base: string;
-  q: string;
-  label: string;
-}) {
-  const sticky = "sticky left-0 z-10 bg-white";
-  return (
-    <Card>
-      <div className="mb-2 flex flex-wrap items-center gap-1 text-xs">
-        Sắp xếp:
-        {Object.entries(SORTS).map(([k, v]) => (
-          <Link key={k} href={`${base}/tong-ket?${q}&tab=tv&sort=${k}`} className={`chip ${sort === k ? "bg-green-700 text-white" : "bg-gray-100 text-gray-700"}`}>
-            {v}
-          </Link>
-        ))}
-      </div>
-      {rows.length === 0 ? (
-        <Empty>Chưa có dữ liệu.</Empty>
-      ) : (
-        <div className="-mx-4 overflow-x-auto">
-          <table className="table min-w-[44rem]">
-            <thead>
-              <tr>
-                <th className={`${sticky} pl-4`}>Tên</th>
-                <th className="text-right">Quỹ cá nhân</th>
-                <th className="text-right">Đi/buổi</th>
-                <th>Chuyên cần</th>
-                <th className="text-right">Nghỉ</th>
-                <th className="text-right">Vote đi không đến</th>
-                <th className="text-right">Không vote mà đi</th>
-                <th className="text-right">Bị phạt</th>
-                <th className="text-right">Tiền trận</th>
-                <th className="text-right pr-4">Đã đóng</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(({ p, s, now }) => (
-                <tr key={p.id}>
-                  <td className={`${sticky} whitespace-nowrap pl-4`}>
-                    <Link href={`${base}/cau-thu/${p.id}`} className="font-medium">
-                      {pname(p)}
-                    </Link>
-                    {p.type === "guest" && <span className="ml-1 text-xs text-gray-400">khách</span>}
-                  </td>
-                  <td className="text-right font-semibold whitespace-nowrap">
-                    <Money v={now} color />
-                  </td>
-                  <td className="text-right font-semibold">
-                    {s.attended}
-                    {s.scheduled ? <span className="font-normal text-gray-400">/{s.scheduled}</span> : ""}
-                  </td>
-                  <td>
-                    {s.rate != null && (
-                      <div className="flex items-center gap-1.5">
-                        <div className="h-2 w-14 overflow-hidden rounded-full bg-gray-100">
-                          <div className="h-full bg-green-600" style={{ width: `${Math.round(s.rate * 100)}%` }} />
-                        </div>
-                        <span className="text-xs">{Math.round(s.rate * 100)}%</span>
-                      </div>
-                    )}
-                  </td>
-                  <td className="text-right">{s.rested || ""}</td>
-                  <td className={`text-right ${s.noshow ? "font-semibold text-red-600" : ""}`}>{s.noshow || ""}</td>
-                  <td className={`text-right ${s.novoteCame ? "font-semibold text-amber-700" : ""}`}>{s.novoteCame || ""}</td>
-                  <td className="text-right tabular-nums whitespace-nowrap">{s.fined ? `${fmtMoney(s.fined)} (${s.fineCount})` : ""}</td>
-                  <td className="text-right tabular-nums">{s.matchFees ? fmtMoney(s.matchFees) : ""}</td>
-                  <td className="text-right tabular-nums pr-4">{s.paidBall ? fmtMoney(s.paidBall) : ""}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      <p className="mt-2 text-xs text-gray-500">
-        <b>Quỹ cá nhân</b>: số tiền hiện tại của mỗi người trong quỹ đội, âm (đỏ) là đang nợ. Các cột khác tính trong {label}, chỉ các buổi
-        đã chốt tiền. “Đi/buổi”: số buổi đi / số buổi có vote mà người đó thuộc danh sách.
-      </p>
-    </Card>
-  );
-}

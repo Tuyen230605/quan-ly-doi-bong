@@ -261,12 +261,19 @@ try {
 
   step = "Trang chủ: quỹ cá nhân";
   await b.goto(T);
-  const myFund = b.locator("a", { hasText: "Quỹ cá nhân" });
+  const myFund = b.locator("a", { hasText: "Quỹ cá nhân" }).filter({ hasText: "Bình" });
   await myFund.waitFor();
   const myFundText = await myFund.innerText();
-  if (!myFundText.includes("Bình") || !myFundText.includes("0đ")) fail(`ô quỹ cá nhân: ${myFundText}`);
+  if (!myFundText.includes("0đ")) fail(`ô quỹ cá nhân: ${myFundText}`);
   if (await b.getByText("Đang nợ nhiều nhất").count()) fail("trang chủ vẫn còn mục Đang nợ nhiều nhất");
-  ok("trang chủ có ô Quỹ cá nhân của Bình (0đ), không còn Đang nợ nhiều nhất");
+  if (await b.locator("h2", { hasText: "Chuyển tiền" }).count()) fail("trang chủ vẫn còn ô Chuyển tiền");
+  const homeTable = b.locator("#thanh-vien");
+  const homeHeaders = await homeTable.locator("th").allInnerTexts();
+  if (homeHeaders.slice(0, 3).join("|") !== "Tên|Quỹ cá nhân|Đi/buổi") fail(`bảng thành viên trang chủ: ${homeHeaders.join("|")}`);
+  const anHome = homeTable.locator("tr", { has: b.getByRole("link", { name: "An", exact: true }) });
+  if (!(await anHome.innerText()).includes("80.000đ")) fail("bảng thành viên trang chủ: An phải có quỹ 80.000đ");
+  await homeTable.locator("tr", { hasText: "(bạn)" }).getByText("Bình").waitFor();
+  ok("trang chủ: ô Quỹ cá nhân của Bình (0đ), bảng thành viên thay ô Chuyển tiền, không còn Đang nợ nhiều nhất");
 
   step = "QR";
   await b.goto(`${T}/qr?fund=ball&player=4&amount=110000`);
@@ -384,7 +391,11 @@ try {
   await expectText(a, "Đã lưu quy định");
   await b.goto(T);
   await expectText(b, "Vote trước 23h59 chủ nhật");
-  ok("admin viết quy định ở cuối trang chủ, thành viên xem được");
+  const titles = await b.locator("h2").allInnerTexts();
+  const iRules = titles.findIndex((t) => t.includes("Quy định của đội"));
+  const iTable = titles.findIndex((t) => t.includes("Bảng thành viên"));
+  if (iRules < 0 || iTable < 0 || iRules > iTable) fail(`thứ tự trang chủ: ${titles.join(" | ")}`);
+  ok("admin viết quy định, thành viên xem được ở trang chủ, nằm trên bảng thành viên");
 
   step = "Link nộp tiền";
   await a.goto(T);
@@ -421,9 +432,9 @@ try {
   await expectText(old, "Nộp cho Hải");
   const haiQr = await readQr(old, "Quỹ tháng 11");
   for (const part of ["5406200000", "0807HAI T11"]) if (!haiQr.includes(part)) fail(`mã QR của Hải thiếu ${part}: ${haiQr}`);
-  await old.goto(T);
-  if (!(await readQr(old, "Quỹ bóng")).includes("0123456789")) fail("QR quỹ bóng ở trang chủ sai");
-  ok("tắt JavaScript: vẫn thấy mã QR nộp tiền (HAI T11) và QR quỹ ở trang chủ");
+  await old.goto(`${T}/quy`);
+  if (!(await readQr(old, "Quỹ bóng")).includes("0123456789")) fail("QR quỹ bóng ở trang Quỹ sai");
+  ok("tắt JavaScript: vẫn thấy mã QR nộp tiền (HAI T11) và QR ở trang Quỹ");
   await a.locator('li[data-player="Bình"]').getByRole("button", { name: "Đã nhận" }).click();
   await a.locator('li[data-player="Bình"]').getByText("✅ Đã nộp").waitFor();
   await expectText(a, "Ai đã nộp (1/6)");

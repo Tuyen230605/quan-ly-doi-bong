@@ -55,7 +55,8 @@ Quy mô: **một web cho nhiều đội**. Mỗi đội khoảng 15–40 cầu t
    - Không dùng link mở thẳng app ngân hàng (`dl.vietqr.io`): thử thực tế trên điện thoại không mở được app.
    - Ảnh QR tạo sẵn trên server, nên máy cũ không chạy được JavaScript của web vẫn thấy mã.
    - Admin thấy danh sách ai đã nộp, bấm **Đã nhận** khi tiền về → ghi khoản nộp, cộng vào quỹ cá nhân. Đóng link khi thu xong.
-5. **Quy định của đội** ở cuối trang chủ: admin tự viết (lần đầu có mẫu lấy từ các mức phạt đang dùng), mọi thành viên xem được.
+5. **Quy định của đội** trên trang chủ: admin tự viết (lần đầu có mẫu lấy từ các mức phạt đang dùng), mọi thành viên xem được.
+   Thứ tự trang chủ: vote · buổi tiếp theo · 3 ô quỹ · nộp tiền · thao tác nhanh (admin) · **quy định** · **bảng thành viên tháng này** (giống tab Từng thành viên, dòng của mình tô xanh). Bỏ ô “Chuyển tiền” (mã QR quỹ): QR đã có ở trang Nộp tiền và trang Quỹ.
 6. **Phạt cuối trận – tích nhanh**: trong mục Phạt của buổi đã chốt, chọn lỗi (hoặc *Lỗi khác* tự ghi tên lỗi), admin tự ghi mức phạt, tích nhiều người (người có đá buổi đó lên đầu), thêm ghi chú → vào danh sách phạt, sửa được từng dòng trước khi xác nhận. Khoản phạt hiện ngay dưới tên người đó trong danh sách “Ai đá & tiền trận”.
 
 ---
