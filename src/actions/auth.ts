@@ -19,8 +19,10 @@ import {
 } from "@/lib/auth";
 import { slugify } from "@/lib/team";
 
-function safeNext(fd: FormData) {
+/** Trang quay về sau khi xong. base: chỉ nhận trang trong đội này (VD /doi/fc-a hoặc /doi/fc-a/nop/1). */
+function safeNext(fd: FormData, base?: string) {
   const next = str(fd, "next");
+  if (base) return next === base || next.startsWith(`${base}/`) ? next : null;
   return next.startsWith("/") && !next.startsWith("//") ? next : null;
 }
 
@@ -85,7 +87,7 @@ export async function joinTeam(_: ActionState, fd: FormData) {
     const [team] = await db.select().from(schema.teams).where(eq(schema.teams.slug, slug));
     if (!team || !verifySecret(str(fd, "password"), team.passwordHash)) fail("Sai tên đội hoặc mật khẩu đội.");
     await grantTeamAccess(team);
-    redirect(`/doi/${team.slug}`);
+    redirect(safeNext(fd, `/doi/${team.slug}`) ?? `/doi/${team.slug}`);
   });
 }
 
@@ -113,7 +115,7 @@ export async function chooseMe(_: ActionState, fd: FormData) {
       }
     }
     await setMeCookie(team.id, p.id);
-    redirect(`/doi/${team.slug}/vote`);
+    redirect(safeNext(fd, `/doi/${team.slug}`) ?? `/doi/${team.slug}/vote`);
   });
 }
 

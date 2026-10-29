@@ -7,7 +7,8 @@ import { fmtDate } from "@/lib/time";
 import { ActionForm } from "./ActionForm";
 import { Empty, Money } from "./ui";
 
-const MATCH_LOCKED = ["match_fee", "match_cost", "advance"];
+// Khoản tự sinh khi chốt trận / khi phạt: không huỷ riêng được.
+const LOCKED = ["match_fee", "match_cost", "advance", "fine_pay"];
 
 export function TxList({
   txs,
@@ -52,7 +53,7 @@ export function TxList({
               </div>
             </div>
             {cancelled && <div className="text-xs text-gray-400">Đã huỷ: {t.cancelReason}</div>}
-            {admin && !cancelled && !MATCH_LOCKED.includes(t.type) && (
+            {admin && !cancelled && !LOCKED.includes(t.type) && (
               <details className="mt-1">
                 <summary className="cursor-pointer text-xs text-gray-400">Huỷ…</summary>
                 <ActionForm action={cancelTx} className="mt-1 flex gap-2" confirm="Huỷ giao dịch này?">

@@ -35,6 +35,11 @@ export function fundQr(fund: FundRow, opts: { amount?: number | null; content?: 
   return { payload, image: payload ? null : fund.qrImage, lines, copies, content, configured: !!(payload || fund.qrImage) };
 }
 
+/** Nội dung chuyển khoản theo link nộp tiền: tên người nộp + chữ admin thêm (VD "AN T11"). */
+export function requestContent(note: string | null, playerName: string) {
+  return transferContent(`${playerName}${note ? ` ${note}` : ""}`);
+}
+
 export function defaultContent(fund: Fund, nickname: string | null, extra?: string) {
   const who = nickname ? ` ${compactName(nickname)}` : "";
   return `${fund === "ball" ? "QB" : "PHAT"}${who}${extra ? ` ${extra}` : ""}`;

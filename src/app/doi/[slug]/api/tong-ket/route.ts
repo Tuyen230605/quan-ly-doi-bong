@@ -40,6 +40,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
     "Bị phạt",
     "Số lần phạt",
     "Đã nộp phạt",
+    "Quỹ cá nhân",
     "Số dư quỹ bóng",
     "Số dư quỹ phạt",
   ];
@@ -63,6 +64,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
         s?.fined ?? 0,
         s?.fineCount ?? 0,
         s?.paidPenalty ?? 0,
+        (b?.ball ?? 0) + (b?.penalty ?? 0),
         b?.ball ?? 0,
         b?.penalty ?? 0,
       ]

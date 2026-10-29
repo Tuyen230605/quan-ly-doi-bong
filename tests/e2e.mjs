@@ -179,8 +179,10 @@ try {
   const penAmount = await a.locator("#phat input[inputmode=numeric]").first().inputValue();
   if (penAmount !== "110.000") fail(`mức phạt gợi ý ${penAmount}, mong 110.000`);
   await button(a, "Xác nhận phạt 1 khoản").click();
-  await expectText(a, "cộng 110.000đ vào quỹ phạt");
-  ok("phạt Cường 110.000đ (bằng tiền trận) vào quỹ phạt");
+  await expectText(a, "trừ quỹ cá nhân, cộng 110.000đ vào quỹ phạt");
+  await expectText(a, "✅ Đã trừ quỹ cá nhân");
+  await a.locator('li[data-player="Cường"]').getByText("🚨 Vắng không báo 110.000đ").waitFor();
+  ok("phạt Cường 110.000đ (bằng tiền trận), trừ vào quỹ cá nhân, chuyển sang quỹ phạt, ghi vào danh sách trận");
 
   step = "Nộp tiền, gạch nợ cũ trước";
   await a.goto(`${T}/quy?f=ball`);
@@ -190,8 +192,8 @@ try {
   await button(a, "Ghi nộp").click();
   await expectText(a, "Đã ghi 1 khoản nộp");
   await a.reload();
-  await expectText(a, "-250.000đ");
-  ok("An nộp 300k; quỹ bóng = 110k + 300k − 660k = −250.000đ");
+  await expectText(a, "-360.000đ");
+  ok("An nộp 300k; quỹ bóng = 110k + 300k − 660k − 110k (phạt Cường chuyển sang quỹ phạt) = −360.000đ");
   await a.goto(`${BASE}${todayHref}`);
   await a.locator('li[data-player="An"]').getByText("✅ Đã trả").waitFor();
   ok("tiền trận của An (+ khách) tự gạch bằng tiền nộp trước");
@@ -204,23 +206,38 @@ try {
   await button(a, "Ghi thu").click();
   await expectText(a, "Đã ghi khoản thu");
   await a.reload();
-  await expectText(a, "200.000đ");
-  ok("quỹ phạt nhận 200k từ nguồn “Tài trợ”");
+  await expectText(a, "310.000đ");
+  ok("quỹ phạt = 110k phạt Cường + 200k từ nguồn “Tài trợ”");
 
   step = "Công nợ";
   await a.goto(`${T}/cong-no?f=ball`);
-  await expectText(a, "3 người đang nợ");
-  await expectText(a, "330.000đ");
+  await expectText(a, "4 người đang nợ");
+  await expectText(a, "440.000đ");
   await a.goto(`${T}/cong-no?f=penalty`);
-  await expectText(a, "Cường");
-  ok("nợ quỹ bóng: 3 người 330k; nợ phạt: Cường");
+  await expectText(a, "Không ai nợ");
+  ok("nợ quỹ bóng: 4 người 440k (Cường nợ vì phạt đã trừ quỹ cá nhân); quỹ phạt không ai nợ");
 
   step = "Thông số thành viên";
   await b.goto(`${T}/cau-thu`);
   await expectText(b, "80.000đ");
   await b.goto(`${T}/tong-ket`);
   await expectText(b, "Cường 1 lần");
-  ok("thành viên xem được số dư (An +80k) và tổng kết (Cường 1 lần)");
+  await b.getByRole("link", { name: /Từng thành viên/ }).click();
+  await b.waitForURL(/tab=tv/);
+  const headers = await b.locator("table th").allInnerTexts();
+  if (headers.slice(0, 3).join("|") !== "Tên|Quỹ cá nhân|Đi/buổi") fail(`cột bảng thành viên: ${headers.join("|")}`);
+  const anRow = b.locator("tr", { has: b.getByRole("link", { name: "An", exact: true }) });
+  if (!(await anRow.innerText()).includes("80.000đ")) fail("bảng thành viên: An phải có quỹ 80.000đ");
+  ok("thành viên xem được số dư (An +80k), tổng kết (Cường 1 lần), tab bảng thành viên: quỹ cá nhân + số buổi đi lên đầu");
+
+  step = "Trang chủ: quỹ cá nhân";
+  await b.goto(T);
+  const myFund = b.locator("a", { hasText: "Quỹ cá nhân" });
+  await myFund.waitFor();
+  const myFundText = await myFund.innerText();
+  if (!myFundText.includes("Bình") || !myFundText.includes("0đ")) fail(`ô quỹ cá nhân: ${myFundText}`);
+  if (await b.getByText("Đang nợ nhiều nhất").count()) fail("trang chủ vẫn còn mục Đang nợ nhiều nhất");
+  ok("trang chủ có ô Quỹ cá nhân của Bình (0đ), không còn Đang nợ nhiều nhất");
 
   step = "QR";
   await b.goto(`${T}/qr?fund=ball&player=4&amount=110000`);
@@ -242,8 +259,8 @@ try {
   await expectText(a, "Ai đá & tiền trận (6 người)");
   await a.locator('li[data-player="Bình"]').getByText("✅ Đã trả").waitFor();
   await a.goto(`${T}/quy?f=ball`);
-  await expectText(a, "-250.000đ");
-  ok("mở lại + chốt lại: Bình vẫn đã trả, quỹ bóng vẫn −250.000đ");
+  await expectText(a, "-360.000đ");
+  ok("mở lại + chốt lại: Bình vẫn đã trả, quỹ bóng vẫn −360.000đ");
 
   step = "Lịch lẻ có vote";
   await a.goto(`${T}/lich/moi`);
@@ -271,12 +288,27 @@ try {
   const binhPenalty = await a.locator('#phat div[data-player="Bình"] input[inputmode=numeric]').inputValue();
   if (binhPenalty !== "300.000") fail(`phạt Bình ${binhPenalty}, mong 300.000`);
   await a.locator('#phat div[data-player="Dũng"] input[name=note]').fill("Lần đầu, nhắc nhở");
-  await button(a, "Xác nhận phạt 1 khoản + 1 ghi chú").click();
-  await expectText(a, "Đã phạt 1 khoản");
+  const quick = a.locator("#phat [data-quick]");
+  await quick.locator("select").selectOption({ label: "Đi muộn" });
+  await quick.getByRole("textbox", { name: "Số tiền phạt mỗi người" }).fill("15.000");
+  await quick.getByRole("button", { name: "Dũng", exact: true }).click();
+  await quick.getByPlaceholder(/Ghi chú/).fill("muộn 20 phút");
+  await button(quick, "+ Thêm 1 người vào danh sách phạt").click();
+  await button(a, "Xác nhận phạt 2 khoản + 1 ghi chú").click();
+  await expectText(a, "Đã phạt 2 khoản");
   await a.reload();
   await expectText(a, "📝 Lần đầu, nhắc nhở");
-  await a.locator('li[data-player="Dũng"]').getByText("Không vote mà đi").waitFor();
-  ok("lịch lẻ: vote đi mà không đến → phạt bằng tiền trận; không vote mà đi → admin chỉ ghi chú");
+  const dung = a.locator('li[data-player="Dũng"]');
+  await dung.getByText("Không vote mà đi").waitFor();
+  await dung.getByText("🚨 Đi muộn 15.000đ · muộn 20 phút").waitFor();
+  if (!(await dung.innerText()).includes("-425.000đ")) fail(`quỹ Dũng sau phạt: ${await dung.innerText()}`);
+  ok("lịch lẻ: vote đi không đến → phạt bằng tiền trận; không vote mà đi → chỉ ghi chú; tích nhanh Dũng đi muộn 15k, quỹ còn −425k");
+
+  step = "Huỷ phạt trả lại quỹ cá nhân";
+  await a.locator("#phat li", { hasText: "Đi muộn" }).getByRole("button", { name: "Huỷ" }).click();
+  await a.locator("#phat li", { hasText: "Đi muộn" }).getByText("Đã huỷ").waitFor();
+  if (!(await dung.innerText()).includes("-410.000đ")) fail(`quỹ Dũng sau huỷ phạt: ${await dung.innerText()}`);
+  ok("huỷ phạt đi muộn → quỹ Dũng về −410k");
 
   step = "Đội thứ 2 tách biệt";
   const { page: c } = await newPage("lan");
@@ -310,12 +342,65 @@ try {
   await expectText(b, "Mật khẩu đội");
   await b.fill("input[name=password]", "moi456");
   await button(b, "Vào đội").click();
-  await b.waitForURL("**/doi/fc-van-phong");
-  ok("đổi mật khẩu đội → thành viên phải nhập lại");
+  await b.waitForURL("**/doi/fc-van-phong/cau-thu");
+  ok("đổi mật khẩu đội → thành viên phải nhập lại, nhập xong quay lại đúng trang đang mở");
+
+  step = "Quy định đội";
+  await a.goto(T);
+  await a.locator("summary", { hasText: "Viết quy định" }).click();
+  const rules = a.locator("textarea[name=rules]");
+  if (!(await rules.inputValue()).includes("Đi muộn: 10.000đ")) fail("mẫu quy định chưa có mức phạt");
+  await rules.fill("1. Đi muộn phạt 10k\n2. Vote trước 23h59 chủ nhật");
+  await button(a, "Lưu quy định").click();
+  await expectText(a, "Đã lưu quy định");
+  await b.goto(T);
+  await expectText(b, "Vote trước 23h59 chủ nhật");
+  ok("admin viết quy định ở cuối trang chủ, thành viên xem được");
+
+  step = "Link nộp tiền";
+  await a.goto(T);
+  await a.getByRole("link", { name: "🔳 Tạo link / QR nộp tiền" }).click();
+  await a.waitForURL("**/nop");
+  await a.fill("input[name=title]", "Quỹ tháng 11");
+  await a.fill("input[name=amount]", "200.000");
+  await a.fill("input[name=note]", "T11");
+  await button(a, "Tạo link").click();
+  await a.waitForURL(/\/nop\/\d+$/);
+  const payPath = new URL(a.url()).pathname;
+  await expectText(a, "Ai đã nộp (0/6)");
+  // Thành viên mới: vào link → nhập mật khẩu đội → chọn tên → quay lại đúng link
+  const { page: d } = await newPage("dung");
+  await d.goto(`${BASE}${payPath}`);
+  await d.fill("input[name=password]", "moi456");
+  await button(d, "Vào đội").click();
+  await expectText(d, "Chọn tên của bạn trước");
+  if (await d.locator("a[data-app]").count()) fail("chưa chọn tên mà đã hiện app ngân hàng");
+  await d.selectOption("select[name=playerId]", { label: "Dũng" });
+  await button(d, "Xác nhận").click();
+  await d.waitForURL(`**${payPath}`);
+  await expectText(d, "Nộp cho Dũng");
+  const mbHref = await d.locator("a[data-app=mb]").getAttribute("href");
+  const mb = new URL(mbHref);
+  const want = { app: "mb", ba: "0123456789@vcb", am: "200000", tn: "DUNG T11", bn: "NGUYEN VAN HUNG" };
+  for (const [k, v] of Object.entries(want)) if (mb.searchParams.get(k) !== v) fail(`link MB: ${k}=${mb.searchParams.get(k)}, mong ${v}`);
+  if (mb.origin !== "https://dl.vietqr.io" || !mb.searchParams.get("url")?.endsWith(payPath)) fail(`link MB sai: ${mbHref}`);
+  if (await d.getByRole("button", { name: /Copy/ }).or(d.getByRole("link", { name: /Tải ảnh/ })).count())
+    fail("trang nộp tiền không được có nút copy / tải QR");
+  ok("thành viên vào link → nhập mật khẩu → chọn tên → link app ngân hàng điền sẵn 200k, nội dung DUNG T11");
+  await a.locator('li[data-player="Bình"]').getByRole("button", { name: "Đã nhận" }).click();
+  await a.locator('li[data-player="Bình"]').getByText("✅ Đã nộp").waitFor();
+  await expectText(a, "Ai đã nộp (1/6)");
+  await b.goto(`${BASE}${payPath}`);
+  await expectText(b, "Bình đã nộp");
+  await expectText(b, "-100.000đ");
+  await b.goto(T);
+  await b.locator("a", { hasText: "Quỹ tháng 11" }).getByText("✅ Đã nộp").waitFor();
+  ok("admin tích Đã nhận → cộng 200k vào quỹ cá nhân Bình (−300k phạt lịch lẻ + 200k = −100k)");
 
   step = "Duyệt mọi trang";
   const teamPages = ["", "/vote", "/lich", "/lich?tab=da", "/lich/moi", "/lich/co-dinh", "/cau-thu", "/cau-thu/1", "/quy"];
-  teamPages.push("/quy?f=penalty", "/cong-no", "/qr", "/tong-ket", "/tong-ket?y=2026", "/lich-su", "/lich-su?tab=nk");
+  teamPages.push("/quy?f=penalty", "/cong-no", "/qr", "/tong-ket", "/tong-ket?y=2026", "/tong-ket?tab=tv", "/lich-su", "/lich-su?tab=nk");
+  teamPages.push("/nop", "/nop/1");
   teamPages.push("/cai-dat", "/them", "/toi");
   for (const p of teamPages) {
     const r = await a.goto(`${T}${p}`);

@@ -260,7 +260,10 @@ export function MatchManager({ matchId, voteMode, rows, candidates, members, cos
       </section>
 
       <section className="card">
-        <h2 className="h2 mb-3">Chốt tiền trận</h2>
+        <h2 className="h2 mb-1">Chốt tiền trận</h2>
+        <p className="muted mb-3">
+          Chốt xong, tiền trận của mỗi người tự trừ vào quỹ cá nhân của họ (khách có người dẫn thì trừ của người dẫn).
+        </p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {COSTS.map(([k, label]) => (
             <label key={k} className="block">

@@ -71,6 +71,19 @@ export async function saveTeamSettings(_: ActionState, fd: FormData) {
   });
 }
 
+/** Quy định của đội (tiền phạt, giờ giấc...), admin tự viết, hiện cuối trang chủ. */
+export async function saveRules(_: ActionState, fd: FormData) {
+  return run(async () => {
+    const { user, team } = await teamAdmin(fd);
+    const rules = str(fd, "rules");
+    if (rules.length > 5000) fail("Quy định dài quá (tối đa 5.000 ký tự).");
+    const db = await getDb();
+    await db.update(teams).set({ rules: rules || null }).where(eq(teams.id, team.id));
+    await audit(team.id, { admin: user }, "Sửa quy định đội");
+    return "Đã lưu quy định";
+  });
+}
+
 /** Đổi mật khẩu đội: mọi máy đã vào đều phải nhập mật khẩu mới. */
 export async function changeTeamPassword(_: ActionState, fd: FormData) {
   return run(async () => {

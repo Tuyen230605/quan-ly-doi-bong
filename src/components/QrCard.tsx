@@ -14,6 +14,7 @@ export function QrCard({
   fileName,
   copies = [],
   size = "md",
+  actions = true,
 }: {
   payload: string | null;
   image?: string | null;
@@ -22,6 +23,7 @@ export function QrCard({
   fileName: string;
   copies?: { label: string; value: string }[];
   size?: "sm" | "md";
+  actions?: boolean; // false: chỉ hiện ảnh QR, không có nút tải ảnh / copy
 }) {
   const [src, setSrc] = useState<string | null>(payload ? null : (image ?? null));
   const linesKey = lines.join("\n");
@@ -72,6 +74,7 @@ export function QrCard({
           ))}
         </div>
       )}
+      {actions && (
       <div className="flex flex-wrap justify-center gap-2">
         {src && (
           <a className="btn btn-sm" href={src} download={`${fileName}.png`}>
@@ -82,6 +85,7 @@ export function QrCard({
           <CopyButton key={c.label} text={c.value} label={c.label} />
         ))}
       </div>
+      )}
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { bulkAddPlayers, savePlayer } from "@/actions/players";
 import { ActionForm } from "@/components/ActionForm";
 import { PlayerFields } from "@/components/forms";
 import { Badge, Card, Empty, Field, Fold, Money, PageTitle, Tabs } from "@/components/ui";
-import { getActiveTx, getPlayers, playerBalances } from "@/lib/data";
+import { getActiveTx, getPlayers, personal, playerBalances } from "@/lib/data";
 import { POSITIONS } from "@/lib/labels";
 import { getSettledAttendance, playerStats } from "@/lib/summary";
 import { viewCtx } from "@/lib/team";
@@ -67,23 +67,17 @@ export default async function PlayersPage({
                     </div>
                   </div>
                   <div className="shrink-0 text-right text-sm">
-                    <div>
-                      <span className="text-xs text-gray-500">Quỹ bóng </span>
-                      <Money v={b.ball} color />
-                    </div>
-                    {b.penalty !== 0 && (
-                      <div>
-                        <span className="text-xs text-gray-500">Phạt </span>
-                        <Money v={b.penalty} color />
-                      </div>
-                    )}
+                    <div className="text-xs text-gray-500">Quỹ cá nhân</div>
+                    <Money v={personal(b)} color className="font-semibold" />
                   </div>
                 </Link>
               </li>
             );
           })}
         </ul>
-        <p className="mt-2 text-xs text-gray-500">Số dư âm (đỏ) là đang nợ, dương (xanh) là đã nộp trước.</p>
+        <p className="mt-2 text-xs text-gray-500">
+          Quỹ cá nhân = tiền đã nộp − tiền trận − tiền phạt. Âm (đỏ) là đang nợ, dương (xanh) là còn tiền trong quỹ.
+        </p>
       </Card>
 
       {admin && (
