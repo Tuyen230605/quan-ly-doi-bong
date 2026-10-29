@@ -62,7 +62,7 @@ export default async function VotePage({ params }: { params: Promise<{ slug: str
       {!me && !admin && (
         <Card className="border-amber-200 bg-amber-50">
           <p className="text-sm">Chọn tên của bạn để vote.</p>
-          <Link href={`${base}/toi`} className="btn btn-primary mt-2">
+          <Link href={`${base}/toi?next=${base}/vote`} className="btn btn-primary mt-2">
             Chọn tên
           </Link>
         </Card>
