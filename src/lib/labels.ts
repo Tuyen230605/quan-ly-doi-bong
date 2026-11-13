@@ -7,6 +7,14 @@ export const KIND_LABELS: Record<string, string> = {
   tournament: "Giải đấu",
 };
 
+export type Outcome = "win" | "draw" | "loss";
+
+export const OUTCOMES: Record<Outcome, string> = { win: "Thắng", draw: "Hoà", loss: "Thua" };
+
+export function isOutcome(v: unknown): v is Outcome {
+  return v === "win" || v === "draw" || v === "loss";
+}
+
 export const POSITIONS: Record<string, string> = { GK: "Thủ môn", DF: "Hậu vệ", MF: "Tiền vệ", FW: "Tiền đạo" };
 
 export const RESULT_LABELS: Record<Result, string> = {

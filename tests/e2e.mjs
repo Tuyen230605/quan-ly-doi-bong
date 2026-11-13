@@ -193,11 +193,15 @@ try {
   await a.locator("li", { hasText: "Long" }).locator("select").selectOption({ label: "Khách của An" });
   await expectText(a, "6 người · 5 thành viên + 1 khách");
   await expectText(a, "110.000đ");
+  await button(a, "Thắng").click();
+  await a.getByRole("textbox", { name: "Bàn thắng" }).fill("3");
+  await a.getByRole("textbox", { name: "Bàn thua" }).fill("1");
   await button(a, "Chốt tiền trận (6 người)").click();
   await expectText(a, "Ai đá & tiền trận (6 người)");
+  await a.locator("#ket-qua").getByText("Thắng 3-1").waitFor();
   await expectText(a, "Vote đi mà không đến");
   await expectText(a, "tính cho An");
-  ok("chốt 6 người × 110.000đ, Cường vote đi (mặc định) mà không đến, khách Long tính cho An");
+  ok("chốt 6 người × 110.000đ, kết quả Thắng 3-1; Cường vote đi (mặc định) mà không đến, khách Long tính cho An");
 
   step = "Tích đã trả";
   const binhRow = a.locator('li[data-player="Bình"]');
@@ -294,12 +298,14 @@ try {
   await a.goto(`${BASE}${todayHref}`);
   await a.getByText("↺ Mở lại trận để sửa").click();
   await expectText(a, "Chốt tiền trận (6 người)");
+  if ((await button(a, "Thắng").getAttribute("aria-pressed")) !== "true") fail("mở lại trận: kết quả Thắng cũ không được chọn sẵn");
   await button(a, "Chốt tiền trận (6 người)").click();
   await expectText(a, "Ai đá & tiền trận (6 người)");
+  await a.locator("#ket-qua").getByText("Thắng 3-1").waitFor();
   await a.locator('li[data-player="Bình"]').getByText("✅ Đã trả").waitFor();
   await a.goto(`${T}/quy?f=ball`);
   await expectText(a, "-360.000đ");
-  ok("mở lại + chốt lại: Bình vẫn đã trả, quỹ bóng vẫn −360.000đ");
+  ok("mở lại + chốt lại: kết quả Thắng 3-1 giữ nguyên, Bình vẫn đã trả, quỹ bóng vẫn −360.000đ");
 
   step = "Lịch lẻ có vote";
   await a.goto(`${T}/lich/moi`);
@@ -342,6 +348,26 @@ try {
   await dung.getByText("🚨 Đi muộn 15.000đ · muộn 20 phút").waitFor();
   if (!(await dung.innerText()).includes("-425.000đ")) fail(`quỹ Dũng sau phạt: ${await dung.innerText()}`);
   ok("lịch lẻ: vote đi không đến → phạt bằng tiền trận; không vote mà đi → chỉ ghi chú; tích nhanh Dũng đi muộn 15k, quỹ còn −425k");
+
+  step = "Nhập kết quả trận đã chốt + thống kê trang chủ";
+  const result = a.locator("#ket-qua");
+  await result.getByText("Thua", { exact: true }).click();
+  await result.getByRole("textbox", { name: "Bàn thắng" }).fill("2");
+  await result.getByRole("textbox", { name: "Bàn thua" }).fill("0");
+  await button(result, "Lưu kết quả").click();
+  await expectText(a, "không khớp kết quả “Thua”");
+  await result.getByRole("textbox", { name: "Bàn thắng" }).fill("0");
+  await result.getByRole("textbox", { name: "Bàn thua" }).fill("2");
+  await button(result, "Lưu kết quả").click();
+  await expectText(a, "Đã lưu: Thua 0-2");
+  await a.goto(T);
+  const stats = a.locator("#thong-ke");
+  const statsText = (await stats.innerText()).replace(/\s+/g, " ");
+  for (const part of ["Tỉ lệ thắng 50%", "1 trận thua", "Chuỗi thắng dài nhất 1 trận", "3 – 3"])
+    if (!statsText.includes(part)) fail(`thống kê trận thiếu "${part}": ${statsText}`);
+  if (statsText.includes("chưa nhập kết quả")) fail("không còn trận nào thiếu kết quả");
+  await a.goto(`${BASE}${oneOffHref}`);
+  ok("sửa kết quả trận đã chốt (tỉ số sai bị chặn) → Thua 0-2; trang chủ: 50% thắng, chuỗi hiện tại 1 trận thua, bàn 3–3");
 
   step = "Huỷ phạt trả lại quỹ cá nhân";
   await a.locator("#phat li", { hasText: "Đi muộn" }).getByRole("button", { name: "Huỷ" }).click();

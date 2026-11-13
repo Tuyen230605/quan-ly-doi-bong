@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { resultOf } from "../src/lib/labels";
+import { resultOf, type Outcome } from "../src/lib/labels";
+import { teamRecord, type PlayedMatch } from "../src/lib/record";
 import { allocatePayments, computeFees, fmtMoney, type LedgerEntry } from "../src/lib/money";
 import { transferContent } from "../src/lib/text";
 import { computeDeadline, vnParts, weekDeadline, weekdayOf } from "../src/lib/time";
@@ -160,4 +161,53 @@ describe("VietQR", () => {
     expect(transferContent("PHAT Nguyễn Văn Đức Anh Rất Dài Quá Trời")).toHaveLength(25);
   });
 
+});
+
+describe("thành tích đội", () => {
+  const m = (id: number, date: string, outcome: Outcome | "none" | null, people = 10, score?: [number, number]): PlayedMatch => ({
+    id,
+    date,
+    startTime: "19:00",
+    outcome,
+    goalsFor: score?.[0] ?? null,
+    goalsAgainst: score?.[1] ?? null,
+    people,
+  });
+
+  it("đếm thắng/hoà/thua, tỉ lệ thắng, chuỗi dài nhất, chuỗi hiện tại", () => {
+    // Thứ tự thời gian: T T H T T T B T T (thứ tự nhập lộn xộn)
+    const r = teamRecord([
+      m(9, "2026-10-09", "win"),
+      m(1, "2026-10-01", "win", 12, [3, 1]),
+      m(2, "2026-10-02", "win"),
+      m(3, "2026-10-03", "draw", 8, [2, 2]),
+      m(4, "2026-10-04", "win"),
+      m(5, "2026-10-05", "win"),
+      m(6, "2026-10-06", "win"),
+      m(7, "2026-10-07", "loss", 14, [0, 1]),
+      m(8, "2026-10-08", "win"),
+      m(10, "2026-10-10", null, 6),
+      m(11, "2026-10-11", "none", 10),
+    ]);
+    expect([r.played, r.win, r.draw, r.loss]).toEqual([9, 7, 1, 1]);
+    expect(r.winRate).toBeCloseTo(7 / 9);
+    expect(r.longestWin).toBe(3);
+    expect(r.longestUnbeaten).toBe(6);
+    expect(r.current).toEqual({ outcome: "win", length: 2 });
+    expect(r.form).toEqual(["win", "win", "loss", "win", "win"]);
+    expect([r.goalsFor, r.goalsAgainst, r.scored]).toEqual([5, 4, 3]);
+    expect(r.missing).toBe(1);
+    expect(r.total).toBe(11);
+    expect(r.maxPeople).toBe(14);
+    expect(r.avgPeople).toBeCloseTo((12 + 10 * 7 + 8 + 14 + 6) / 11);
+  });
+
+  it("chuỗi thua hiện tại; chưa có trận nào", () => {
+    expect(teamRecord([m(1, "2026-10-01", "win"), m(2, "2026-10-02", "loss"), m(3, "2026-10-03", "loss")]).current).toEqual({
+      outcome: "loss",
+      length: 2,
+    });
+    const empty = teamRecord([]);
+    expect([empty.played, empty.winRate, empty.current, empty.avgPeople]).toEqual([0, null, null, null]);
+  });
 });

@@ -7,6 +7,7 @@ import {
   markPaid,
   reopenMatch,
   restoreMatch,
+  setMatchOutcome,
   unmarkPaid,
   updateMatch,
 } from "@/actions/matches";
@@ -16,7 +17,7 @@ import { CopyButton } from "@/components/CopyButton";
 import { MatchFields } from "@/components/forms";
 import { MatchManager, type ManagerRow } from "@/components/MatchManager";
 import { PenaltyForm } from "@/components/PenaltyForm";
-import { Badge, Card, Empty, Fold, Money, PageTitle, PayBadge, ResultBadge } from "@/components/ui";
+import { Badge, Card, Empty, Field, Fold, Money, OutcomeBadge, PageTitle, PayBadge, ResultBadge } from "@/components/ui";
 import { getDb, schema } from "@/db";
 import {
   getActiveTx,
@@ -30,7 +31,7 @@ import {
   personal,
   playerBalances,
 } from "@/lib/data";
-import { KIND_LABELS } from "@/lib/labels";
+import { isOutcome, KIND_LABELS, OUTCOMES } from "@/lib/labels";
 import { fmtMoney, SPLIT_METHODS, type SplitMethod } from "@/lib/money";
 import { viewCtx } from "@/lib/team";
 import { pname } from "@/lib/text";
@@ -43,6 +44,38 @@ function FundLeft({ v }: { v: number }) {
     <div className="mt-0.5 text-xs text-gray-500">
       quỹ còn <Money v={v} color />
     </div>
+  );
+}
+
+/** Nhập / sửa kết quả trận đã chốt. Radio + nút thường nên chạy được cả khi máy không chạy JavaScript. */
+function OutcomeForm({ m }: { m: { id: number; outcome: string | null; goalsFor: number | null; goalsAgainst: number | null } }) {
+  const options: [string, string, string][] = [
+    ["win", OUTCOMES.win, "has-[:checked]:border-green-700 has-[:checked]:bg-green-700 has-[:checked]:text-white"],
+    ["draw", OUTCOMES.draw, "has-[:checked]:border-amber-500 has-[:checked]:bg-amber-500 has-[:checked]:text-white"],
+    ["loss", OUTCOMES.loss, "has-[:checked]:border-red-600 has-[:checked]:bg-red-600 has-[:checked]:text-white"],
+    ["none", "Không tính", "has-[:checked]:border-gray-500 has-[:checked]:bg-gray-500 has-[:checked]:text-white"],
+  ];
+  return (
+    <ActionForm action={setMatchOutcome} className="space-y-3">
+      <input type="hidden" name="id" value={m.id} />
+      <div className="grid grid-cols-4 gap-1.5">
+        {options.map(([v, label, cls]) => (
+          <label key={v} className={`btn btn-sm !py-2 ${cls}`}>
+            <input type="radio" name="outcome" value={v} defaultChecked={m.outcome === v} className="sr-only" />
+            {label}
+          </label>
+        ))}
+      </div>
+      <div className="flex items-end gap-2">
+        <Field label="Tỉ số (không bắt buộc)">
+          <div className="flex items-center gap-2">
+            <input className="input !w-16 text-center" name="goalsFor" inputMode="numeric" aria-label="Bàn thắng" defaultValue={m.goalsFor ?? ""} />–
+            <input className="input !w-16 text-center" name="goalsAgainst" inputMode="numeric" aria-label="Bàn thua" defaultValue={m.goalsAgainst ?? ""} />
+          </div>
+        </Field>
+        <button className="btn btn-primary ml-auto">Lưu kết quả</button>
+      </div>
+    </ActionForm>
   );
 }
 
@@ -177,7 +210,10 @@ export default async function MatchPage({ params }: { params: Promise<{ slug: st
       </PageTitle>
 
       <Card>
-        <div className="font-semibold">{title}</div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="font-semibold">{title}</div>
+          <OutcomeBadge m={m} />
+        </div>
         <div className="text-sm text-gray-700">
           {m.startTime}
           {m.endTime ? `–${m.endTime}` : ""} · {venue?.name ?? "Chưa chọn sân"}
@@ -317,6 +353,7 @@ export default async function MatchPage({ params }: { params: Promise<{ slug: st
             .map((p) => ({ id: p.id, name: pname(p), isGuest: p.type === "guest", hostPlayerId: p.hostPlayerId }))}
           members={memberOptions}
           costs={{ field: m.costField, water: m.costWater, referee: m.costReferee, other: m.costOther }}
+          result={{ outcome: m.outcome, goalsFor: m.goalsFor, goalsAgainst: m.goalsAgainst }}
           defaults={{
             method: team.splitMethod as SplitMethod,
             step: team.roundingStep,
@@ -422,6 +459,19 @@ export default async function MatchPage({ params }: { params: Promise<{ slug: st
               <input type="hidden" name="id" value={id} />
               <button className="btn btn-sm">↺ Mở lại trận để sửa</button>
             </ActionForm>
+          )}
+        </Card>
+      )}
+
+      {settled && (admin || isOutcome(m.outcome)) && (
+        <Card title="🏆 Kết quả trận" id="ket-qua" right={<OutcomeBadge m={m} />}>
+          {admin ? (
+            <OutcomeForm m={m} />
+          ) : (
+            <p className="text-sm">
+              {isOutcome(m.outcome) && OUTCOMES[m.outcome]}
+              {m.goalsFor != null ? ` ${m.goalsFor}-${m.goalsAgainst}` : ""}
+            </p>
           )}
         </Card>
       )}

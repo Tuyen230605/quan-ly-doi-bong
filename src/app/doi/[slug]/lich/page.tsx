@@ -1,9 +1,9 @@
 import { and, asc, desc, eq, gte, inArray, lt, or } from "drizzle-orm";
 import Link from "next/link";
-import { Badge, Card, Empty, PageTitle, Tabs } from "@/components/ui";
+import { Badge, Card, Empty, OutcomeBadge, PageTitle, Tabs } from "@/components/ui";
 import { getDb, schema } from "@/db";
 import { ensureScheduleMatches, getVenues, indexById, matchTotalCost } from "@/lib/data";
-import { KIND_LABELS } from "@/lib/labels";
+import { isOutcome, KIND_LABELS } from "@/lib/labels";
 import { fmtMoney } from "@/lib/money";
 import { viewCtx } from "@/lib/team";
 import { fmtMatchDate, todayVN } from "@/lib/time";
@@ -91,7 +91,7 @@ export default async function SchedulePage({
                   <div className="shrink-0 text-right">
                     {x.status === "settled" && (
                       <>
-                        <Badge tone="green">Đã chốt</Badge>
+                        {isOutcome(x.outcome) ? <OutcomeBadge m={x} /> : <Badge tone="green">Đã chốt</Badge>}
                         <div className="mt-0.5 text-xs text-gray-500">
                           {counts.get(x.id) ?? 0} người · {fmtMoney(matchTotalCost(x))}
                         </div>

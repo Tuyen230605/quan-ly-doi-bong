@@ -14,7 +14,9 @@ Web cho các đội bóng phủi, dùng chủ yếu trên điện thoại. **M�
 - **QR chuyển khoản**: admin tải ảnh QR từ app ngân hàng, web tự đọc số tài khoản để tạo QR có sẵn số tiền + nội dung.
 - **Link nộp tiền**: admin tạo link (VD quỹ tháng 11, 200k) gửi Zalo. Thành viên bấm link, chọn tên là hiện ngay mã QR có sẵn số tiền, nội dung là tên người nộp; quét bằng app ngân hàng. Admin bấm *Đã nhận* khi tiền về.
 - **Máy cũ** (dưới iOS 16.4 / Chrome 111, không chạy được JavaScript của web): vẫn vào đội, chọn tên, vote, thấy mã QR (ảnh QR tạo sẵn trên server).
-- **Quy định của đội** ở cuối trang chủ, admin tự viết.
+- **Kết quả trận**: chốt trận chọn Thắng / Hoà / Thua / Không tính (đá nội bộ) + tỉ số tuỳ chọn; sửa được kết quả các trận đã chốt.
+- **Thống kê trận** ở trang chủ: số trận, thắng/hoà/thua, tỉ lệ thắng, phong độ 5 trận gần nhất, chuỗi hiện tại, chuỗi thắng / bất bại dài nhất, bàn thắng – bàn thua, số người mỗi buổi.
+- **Quy định của đội** ở trang chủ, admin tự viết.
 - **Bảng thành viên** ở cuối trang chủ và tab *Từng thành viên* trong Tổng kết (quỹ cá nhân, số buổi đi lên đầu), **tổng kết tháng** (đi, nghỉ, vote đi mà không đến, không vote mà đi, đã đóng, bị phạt), xếp hạng, copy gửi Zalo, xuất Excel.
 - **Lịch sử** giao dịch và nhật ký thao tác (ai làm gì, lúc nào).
 
@@ -110,7 +112,8 @@ Bản preview cũng chạy migration khi build. Nếu preview dùng chung databa
 
 1. Trước hạn chót: admin vào **Vote** → **Copy nhắc vote** → dán Zalo.
 2. Sau trận: mở buổi → **Điểm danh**. Danh sách chia theo vote, ai vote đi đã được tick sẵn. Tick lại cho đúng thực tế, thêm khách → **Chốt tiền trận**. Tiền trận tự trừ vào quỹ cá nhân của từng người.
-3. Mục **Phạt**: web gợi ý *vote đi mà không đến* (tick sẵn) và *không vote mà đi* (không tick sẵn, tuỳ bạn phạt hay ghi chú). Lỗi khác (đi muộn…) dùng **Tích nhanh**: chọn lỗi, ghi giá, tích người → **Xác nhận**. Tiền phạt trừ vào quỹ cá nhân.
+3. Trong khung chốt tiền chọn **kết quả** (Thắng / Hoà / Thua / Không tính) và tỉ số nếu muốn. Quên thì vào buổi đó → **Kết quả trận** sửa sau; trang chủ nhắc admin các buổi chưa nhập.
+   Mục **Phạt**: web gợi ý *vote đi mà không đến* (tick sẵn) và *không vote mà đi* (không tick sẵn, tuỳ bạn phạt hay ghi chú). Lỗi khác (đi muộn…) dùng **Tích nhanh**: chọn lỗi, ghi giá, tích người → **Xác nhận**. Tiền phạt trừ vào quỹ cá nhân.
 4. Thu tiền: **Thao tác nhanh → Tạo link / QR nộp tiền** → **Copy link gửi nhóm**. Tiền về thì bấm **Đã nhận** cho từng người (hoặc **Đã trả** trong buổi đá / **Công nợ**). Chốt nhầm thì bấm **Mở lại trận** rồi chốt lại.
 5. Cuối tháng: **Tổng kết** → **Copy tổng kết** gửi nhóm, hoặc tải CSV.
 

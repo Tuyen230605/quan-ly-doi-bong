@@ -147,6 +147,9 @@ export const matches = pgTable(
     guestFee: integer("guest_fee"),
     payerPlayerId: integer("payer_player_id"),
     memberFee: integer("member_fee"),
+    outcome: text("outcome"), // win | draw | loss | none (không tính, VD đá nội bộ); null = chưa nhập
+    goalsFor: integer("goals_for"), // tỉ số (không bắt buộc)
+    goalsAgainst: integer("goals_against"),
     settledAt: timestamp("settled_at", { withTimezone: true }),
     createdAt: createdAt(),
   },

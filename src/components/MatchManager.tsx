@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { saveAttendance, settleMatch, type AttendanceItem } from "@/actions/matches";
 import type { ActionState } from "@/lib/action";
-import { RESULT_LABELS, resultOf, type Result, type VoteChoice } from "@/lib/labels";
+import { isOutcome, OUTCOMES, RESULT_LABELS, resultOf, type Outcome, type Result, type VoteChoice } from "@/lib/labels";
 import { computeFees, fmtMoney, parseMoney, SPLIT_METHODS, type SplitMethod } from "@/lib/money";
 
 export type ManagerRow = {
@@ -27,6 +27,7 @@ type Props = {
   members: { id: number; name: string }[];
   costs: { field: number; water: number; referee: number; other: number };
   defaults: { method: SplitMethod; step: number; fixedFee: number; guestFee: number };
+  result?: { outcome: string | null; goalsFor: number | null; goalsAgainst: number | null }; // kết quả cũ khi mở lại trận
 };
 
 const RESULT_STYLE: Record<Result, string> = {
@@ -43,6 +44,13 @@ const RESULT_HINT: Partial<Record<Result, string>> = {
   novote_came: " → tuỳ admin ghi chú / phạt",
 };
 
+const OUTCOME_STYLE: Record<Outcome | "none", string> = {
+  win: "!border-green-700 !bg-green-700 !text-white",
+  draw: "!border-amber-500 !bg-amber-500 !text-white",
+  loss: "!border-red-600 !bg-red-600 !text-white",
+  none: "!border-gray-500 !bg-gray-500 !text-white",
+};
+
 const COSTS = [
   ["field", "Tiền sân"],
   ["water", "Nước"],
@@ -50,7 +58,7 @@ const COSTS = [
   ["other", "Khác"],
 ] as const;
 
-export function MatchManager({ matchId, voteMode, rows, candidates, members, costs: initialCosts, defaults }: Props) {
+export function MatchManager({ matchId, voteMode, rows, candidates, members, costs: initialCosts, defaults, result: prev }: Props) {
   const [people, setPeople] = useState<Person[]>(rows.map((r) => ({ ...r, key: r.playerId })));
   const [pick, setPick] = useState("");
   const [guestName, setGuestName] = useState("");
@@ -64,6 +72,10 @@ export function MatchManager({ matchId, voteMode, rows, candidates, members, cos
   const [state, setState] = useState<ActionState>(null);
   const [pending, start] = useTransition();
   const [tempId, setTempId] = useState(-1);
+  const [outcome, setOutcome] = useState<Outcome | "none" | null>(
+    prev?.outcome === "none" || isOutcome(prev?.outcome) ? (prev.outcome as Outcome | "none") : null,
+  );
+  const [score, setScore] = useState({ gf: String(prev?.goalsFor ?? ""), ga: String(prev?.goalsAgainst ?? "") });
 
   const present = people.filter((p) => p.present);
   const total = costs.field + costs.water + costs.referee + costs.other;
@@ -117,10 +129,23 @@ export function MatchManager({ matchId, voteMode, rows, candidates, members, cos
 
   const save = () => start(async () => setState(await saveAttendance(matchId, items())));
   const settle = () => {
-    if (!window.confirm(`Chốt tiền: ${present.length} người, tổng chi phí ${fmtMoney(total)}?`)) return;
+    const result = outcome && outcome !== "none" ? `, kết quả: ${OUTCOMES[outcome]}${score.gf && score.ga ? ` ${score.gf}-${score.ga}` : ""}` : "";
+    if (!window.confirm(`Chốt tiền: ${present.length} người, tổng chi phí ${fmtMoney(total)}${result}?`)) return;
     start(async () =>
       setState(
-        await settleMatch({ matchId, attendance: items(), costs, method, step, fixedFee, guestFee, payerPlayerId: payer }),
+        await settleMatch({
+          matchId,
+          attendance: items(),
+          costs,
+          method,
+          step,
+          fixedFee,
+          guestFee,
+          payerPlayerId: payer,
+          outcome,
+          goalsFor: score.gf === "" ? null : Number(score.gf),
+          goalsAgainst: score.ga === "" ? null : Number(score.ga),
+        }),
       ),
     );
   };
@@ -264,6 +289,41 @@ export function MatchManager({ matchId, voteMode, rows, candidates, members, cos
         <p className="muted mb-3">
           Chốt xong, tiền trận của mỗi người tự trừ vào quỹ cá nhân của họ (khách có người dẫn thì trừ của người dẫn).
         </p>
+        <div className="mb-4 rounded-xl bg-gray-50 p-3">
+          <span className="label">Kết quả trận</span>
+          <div className="grid grid-cols-4 gap-1.5">
+            {([...Object.entries(OUTCOMES), ["none", "Không tính"]] as [Outcome | "none", string][]).map(([k, label]) => (
+              <button
+                key={k}
+                type="button"
+                aria-pressed={outcome === k}
+                onClick={() => setOutcome(outcome === k ? null : k)}
+                className={`btn btn-sm !py-2 ${outcome === k ? OUTCOME_STYLE[k] : ""}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 flex items-center gap-2 text-sm">
+            <span className="text-gray-600">Tỉ số (không bắt buộc)</span>
+            <input
+              className="input !w-14 !py-1 text-center"
+              inputMode="numeric"
+              aria-label="Bàn thắng"
+              value={score.gf}
+              onChange={(e) => setScore({ ...score, gf: e.target.value.replace(/\D/g, "").slice(0, 2) })}
+            />
+            –
+            <input
+              className="input !w-14 !py-1 text-center"
+              inputMode="numeric"
+              aria-label="Bàn thua"
+              value={score.ga}
+              onChange={(e) => setScore({ ...score, ga: e.target.value.replace(/\D/g, "").slice(0, 2) })}
+            />
+          </div>
+          <p className="mt-1 text-xs text-gray-500">Đá nội bộ chọn “Không tính”. Sửa lại được sau khi chốt.</p>
+        </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {COSTS.map(([k, label]) => (
             <label key={k} className="block">

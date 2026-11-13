@@ -4,6 +4,7 @@ import { saveRules } from "@/actions/teams";
 import { getDb, schema } from "@/db";
 import { ActionForm } from "@/components/ActionForm";
 import { MemberTable, memberRows, memberSort, sortMemberRows } from "@/components/MemberTable";
+import { TeamStats } from "@/components/TeamStats";
 import { Badge, Card, Empty, Fold, Money, Stat } from "@/components/ui";
 import {
   ensureScheduleMatches,
@@ -20,6 +21,7 @@ import {
   type PenaltyType,
 } from "@/lib/data";
 import { fmtMoney } from "@/lib/money";
+import { teamRecord } from "@/lib/record";
 import { getSettledAttendance, playerStats } from "@/lib/summary";
 import { viewCtx } from "@/lib/team";
 import { pname } from "@/lib/text";
@@ -85,6 +87,11 @@ export default async function HomePage({
   const ym = today.slice(0, 7);
   const { from, to } = monthRange(ym);
   const members = sortMemberRows(memberRows(players, playerStats(atts, matches, txs, from, to), txs), sort);
+  const peopleBy = new Map<number, number>();
+  for (const a of atts) if (a.present) peopleBy.set(a.matchId, (peopleBy.get(a.matchId) ?? 0) + 1);
+  const played = [...matches.values()].map((m) => ({ ...m, people: peopleBy.get(m.id) ?? 0 }));
+  const record = teamRecord(played);
+  const noOutcome = played.filter((m) => m.outcome == null).sort((a, b) => (a.date < b.date ? 1 : -1));
   const venue = next?.venueId ? vs.get(next.venueId) : undefined;
 
   return (
@@ -193,6 +200,8 @@ export default async function HomePage({
           </div>
         </Card>
       )}
+
+      <TeamStats r={record} missing={noOutcome} base={base} admin={!!admin} />
 
       {(team.rules || admin) && (
         <Card title="📜 Quy định của đội" id="quy-dinh">
