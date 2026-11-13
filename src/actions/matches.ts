@@ -6,6 +6,7 @@ import { getDb, schema, type DB } from "@/db";
 import { audit, fail, int, optStr, run, str, type ActionState } from "@/lib/action";
 import { getMe, getUser, isTeamAdmin, type Team } from "@/lib/auth";
 import { getActiveTx, getMatchRoster, getPlayers, indexById, paidByTx, type Match } from "@/lib/data";
+import { isOutcome, OUTCOMES, type Outcome } from "@/lib/labels";
 import { computeFees, fmtMoney, parseMoney, type SplitMethod } from "@/lib/money";
 import { teamAdmin } from "@/lib/team";
 import { pname } from "@/lib/text";
@@ -214,7 +215,28 @@ export type SettleInput = {
   fixedFee: number;
   guestFee: number;
   payerPlayerId: number | null;
+  outcome: Outcome | "none" | null;
+  goalsFor: number | null;
+  goalsAgainst: number | null;
 };
+
+/** Tỉ số không bắt buộc; nhập thì phải đủ 2 bên, số 0–99. */
+function readScore(gf: number | null, ga: number | null) {
+  const ok = (n: number | null) => n != null && Number.isInteger(n) && n >= 0 && n < 100;
+  if (gf == null && ga == null) return { goalsFor: null, goalsAgainst: null };
+  if (!ok(gf) || !ok(ga)) fail("Tỉ số nhập đủ 2 bên, mỗi bên từ 0 đến 99 (hoặc để trống cả 2).");
+  return { goalsFor: gf, goalsAgainst: ga };
+}
+
+/** "none" = không tính (đá nội bộ). Có tỉ số mà chưa chọn kết quả thì tự suy ra; chọn rồi thì phải khớp tỉ số. */
+function readOutcome(outcome: unknown, score: { goalsFor: number | null; goalsAgainst: number | null }): Outcome | "none" | null {
+  if (outcome === "none") return "none";
+  const { goalsFor: gf, goalsAgainst: ga } = score;
+  const fromScore: Outcome | null = gf == null || ga == null ? null : gf > ga ? "win" : gf < ga ? "loss" : "draw";
+  const chosen = isOutcome(outcome) ? outcome : null;
+  if (chosen && fromScore && chosen !== fromScore) fail(`Tỉ số ${gf}-${ga} không khớp kết quả “${OUTCOMES[chosen]}”.`);
+  return chosen ?? fromScore;
+}
 
 export async function settleMatch(input: SettleInput): Promise<ActionState> {
   return run(async () => {
@@ -227,6 +249,8 @@ export async function settleMatch(input: SettleInput): Promise<ActionState> {
     const rows = await getMatchRoster(m, ps);
     const present = rows.filter((r) => r.present);
     if (!present.length) fail("Chưa có ai “Có đá”.");
+    const score = readScore(input.goalsFor, input.goalsAgainst);
+    const outcome = readOutcome(input.outcome, score);
     const payerId = input.payerPlayerId && ps.has(input.payerPlayerId) ? input.payerPlayerId : null;
 
     const c = input.costs;
@@ -296,6 +320,8 @@ export async function settleMatch(input: SettleInput): Promise<ActionState> {
           guestFee: input.guestFee,
           payerPlayerId: payerId,
           memberFee: calc.memberFee,
+          outcome,
+          ...score,
           status: "settled",
           settledAt: new Date(),
         })
@@ -320,9 +346,26 @@ export async function settleMatch(input: SettleInput): Promise<ActionState> {
       m.teamId,
       { admin: user },
       "Chốt tiền trận",
-      `${dm}: ${present.length} người, chi phí ${fmtMoney(total)}, ${fmtMoney(calc.memberFee)}/người`,
+      `${dm}: ${present.length} người, chi phí ${fmtMoney(total)}, ${fmtMoney(calc.memberFee)}/người${isOutcome(outcome) ? `, ${OUTCOMES[outcome]}` : ""}`,
     );
     return `Đã chốt: ${present.length} người, ${fmtMoney(calc.memberFee)}/người, đã trừ vào quỹ cá nhân`;
+  });
+}
+
+/** Nhập / sửa kết quả của buổi đã chốt (kể cả các trận cũ). Bỏ trống = không tính (VD đá nội bộ). */
+export async function setMatchOutcome(_: ActionState, fd: FormData) {
+  return run(async () => {
+    const { user, team } = await teamAdmin(fd);
+    const db = await getDb();
+    const m = await loadMatch(db, Number(str(fd, "id")), team.id);
+    if (m.status !== "settled") fail("Chốt tiền trận trước rồi mới nhập kết quả.");
+    const score = readScore(int(fd, "goalsFor"), int(fd, "goalsAgainst"));
+    const outcome = readOutcome(str(fd, "outcome"), score);
+    await db.update(matches).set({ outcome, ...score }).where(eq(matches.id, m.id));
+    const scoreText = score.goalsFor != null ? ` ${score.goalsFor}-${score.goalsAgainst}` : "";
+    const text = isOutcome(outcome) ? OUTCOMES[outcome] : outcome === "none" ? "Không tính" : "Chưa nhập";
+    await audit(team.id, { admin: user }, "Kết quả trận", `${fmtDM(m.date)}: ${text}${scoreText}`);
+    return `Đã lưu: ${text}${scoreText}`;
   });
 }
 

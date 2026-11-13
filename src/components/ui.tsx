@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { RESULT_LABELS, type Result } from "@/lib/labels";
+import { OUTCOMES, RESULT_LABELS, type Outcome, type Result } from "@/lib/labels";
 import { fmtMoney } from "@/lib/money";
 
 export function Money({
@@ -81,6 +81,20 @@ export function ResultBadge({ result }: { result: Result | null }) {
   return <Badge tone={RESULT_TONES[result]}>{RESULT_LABELS[result]}</Badge>;
 }
 
+const OUTCOME_TONES: Record<Outcome, keyof typeof TONES> = { win: "green", draw: "amber", loss: "red" };
+
+/** Kết quả trận: Thắng 3-1 / Hoà / Thua. */
+export function OutcomeBadge({ m }: { m: { outcome: string | null; goalsFor: number | null; goalsAgainst: number | null } }) {
+  const o = m.outcome as Outcome | null;
+  if (!o || !(o in OUTCOMES)) return null;
+  return (
+    <Badge tone={OUTCOME_TONES[o]}>
+      {OUTCOMES[o]}
+      {m.goalsFor != null && m.goalsAgainst != null ? ` ${m.goalsFor}-${m.goalsAgainst}` : ""}
+    </Badge>
+  );
+}
+
 export function PayBadge({ fee, paid }: { fee: number; paid: number }) {
   if (fee <= 0) return <Badge>Miễn</Badge>;
   if (paid >= fee) return <Badge tone="green">✅ Đã trả</Badge>;
@@ -105,9 +119,9 @@ export function Stat({
 }) {
   const body = (
     <>
-      <div className="truncate text-xs text-gray-500">{label}</div>
+      <div className={`text-xs text-gray-500 ${compact ? "truncate" : ""}`}>{label}</div>
       <div className={`mt-0.5 font-bold text-gray-900 ${compact ? "text-[15px] whitespace-nowrap" : "text-lg"}`}>{value}</div>
-      {sub && <div className="mt-0.5 truncate text-xs text-gray-500">{sub}</div>}
+      {sub && <div className={`mt-0.5 text-xs text-gray-500 ${compact ? "truncate" : ""}`}>{sub}</div>}
     </>
   );
   const cls = `min-w-0 rounded-xl border border-gray-200 bg-gray-50 py-2 ${compact ? "px-2.5" : "px-3"} ${className}`;

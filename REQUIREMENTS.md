@@ -1,6 +1,6 @@
 # Web Quản Lý Đội Bóng — Yêu cầu tính năng
 
-> Bản 0.6 · 29/10/2026 · Đã có code, cách chạy và deploy xem [README.md](README.md)
+> Bản 0.7 · 13/11/2026 · Đã có code, cách chạy và deploy xem [README.md](README.md)
 
 ## 1. Mục tiêu
 
@@ -41,6 +41,14 @@ Quy mô: **một web cho nhiều đội**. Mỗi đội khoảng 15–40 cầu t
 | Link nộp tiền: bấm nộp là hiện mã QR có sẵn số tiền, nội dung là tên người nộp | [Bản 0.6](#thay-đổi-bản-06) |
 | Admin tự viết quy định đội ở cuối trang chủ | [Bản 0.6](#thay-đổi-bản-06) |
 | Cuối trận tích nhanh người bị phạt (đi muộn, vote không đi…), admin tự ghi giá, có ghi chú | [Bản 0.6](#thay-đổi-bản-06) |
+
+### Thay đổi bản 0.7
+
+1. **Kết quả trận**: khung “Chốt tiền trận” có chọn *Thắng / Hoà / Thua / Không tính* và tỉ số (không bắt buộc). Có tỉ số mà không chọn thì tự suy ra; chọn mà không khớp tỉ số thì báo lỗi. “Không tính” dùng cho đá nội bộ: không vào thống kê, không bị nhắc.
+   - Buổi đã chốt (kể cả các buổi trước bản này) có mục **🏆 Kết quả trận** để admin nhập / sửa bất cứ lúc nào. Mở lại trận rồi chốt lại thì kết quả cũ được điền sẵn.
+   - Trang Lịch → Đã đá hiện kết quả từng buổi.
+2. **Thống kê trận** ở trang chủ (giữa Thao tác nhanh và Quy định): số trận có kết quả, thắng / hoà / thua, tỉ lệ thắng (thanh màu), phong độ 5 trận gần nhất (T/H/B), chuỗi hiện tại (VD “3 trận thắng”), chuỗi thắng dài nhất, chuỗi bất bại dài nhất, bàn thắng – bàn thua (các trận có tỉ số), số người trung bình / đông nhất mỗi buổi. Admin thấy danh sách buổi đã đá chưa nhập kết quả để điền nhanh.
+   Tính trên mọi buổi đã chốt từ trước tới nay. Cột mới: `matches.outcome` (win/draw/loss/none), `goals_for`, `goals_against` (migration 0003, chỉ thêm cột).
 
 ### Thay đổi bản 0.6
 
